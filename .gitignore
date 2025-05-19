@@ -1,0 +1,9 @@
+.env
+FOLDER_FILE_UPLOAD
+venv
+**.pyc
+FOLDER_SAVE_IMG
+test_data
+tmp.py
+tmp.json
+.blackboxrules

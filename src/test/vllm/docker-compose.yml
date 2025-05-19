@@ -1,0 +1,52 @@
+services:
+  vllm-llm:
+    image: vllm/vllm-openai:latest
+    runtime: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    environment:
+      # - VLLM_USE_FP16=true
+      - PATH=/usr/local/cuda/bin:$PATH
+      - LD_LIBRARY_PATH=/usr/local/cuda/lib64/:/usr/local/cuda/targets/x86_64-linux/lib:$LD_LIBRARY_PATH
+
+    volumes:
+      - /home/toannk2/chatbot/backend/LLM:/LLM
+      - ~/.cache/huggingface:/root/.cache/huggingface
+      - /usr/local/cuda:/usr/local/cuda  # Mount CUDA libraries
+      - /usr/local/cuda/lib64:/usr/local/cuda/lib64
+      - /usr/local/cuda/targets/x86_64-linux/lib:/usr/local/cuda/targets/x86_64-linux/lib
+    ports:
+      - "8000:8000"
+    ipc: host
+    command: --model /LLM/LLMs/kevinbazira/aya-expanse-8b-awq-4bit --gpu-memory-utilization 0.5
+
+  vllm-emb:
+    image: vllm/vllm-openai:latest
+    runtime: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    environment:
+      # - VLLM_USE_FP16=true
+      - PATH=/usr/local/cuda/bin:$PATH
+      - LD_LIBRARY_PATH=/usr/local/cuda/lib64/:/usr/local/cuda/targets/x86_64-linux/lib:$LD_LIBRARY_PATH
+
+    volumes:
+      - /home/toannk2/chatbot/backend/LLM:/LLM
+      - ~/.cache/huggingface:/root/.cache/huggingface
+      - /usr/local/cuda:/usr/local/cuda  # Mount CUDA libraries
+      - /usr/local/cuda/lib64:/usr/local/cuda/lib64
+      - /usr/local/cuda/targets/x86_64-linux/lib:/usr/local/cuda/targets/x86_64-linux/lib
+    ports:
+      - "8001:8000"
+    ipc: host
+    command: --model /LLM/EmbeddingModels/BAAI/bge-m3 --gpu-memory-utilization 0.5

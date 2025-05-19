@@ -1,0 +1,29 @@
+MONGO_DB : "test_v1"
+MILVUS_DB : "tuan_milvus"
+PATH_SAVE_FILE_UPLOAD : "./FOLDER_FILE_UPLOAD"
+
+PATH_SAVE_IMG_OF_FILE : "./FOLDER_SAVE_IMG"
+
+DEVICE : 0
+
+# MILVUS, QDRANT, ...
+SERVICE_VECTOR_STORE : "MILVUS"
+
+# HUGGINGFACE, OPENAI API , OLLAMA , ...
+PROVIDER_MODEL_EMB : "HUGGINGFACE"
+HUGGINGFACE_MODEL :
+  EMBEDDING_MODEL_PATH : "/home/tuanndq/test_chatbot/download_model/model/embedding_models/bge/bge-m3-model"
+  # thêm các path của các model khác 
+
+  CHAT_MODEL_PATH : 
+    aya-expanse-8b: "/home/tuanndq/test_chatbot/chatbot/LLM/LLMs/CohereForAI/aya-expanse-8b"
+    bloom-1b7: "/home/tuanndq/test_chatbot/download_model/model/chat_models/bigscience/bloom-1b7"
+  # thêm các path của các model khác 
+OPENAI_API_MODEL:
+  EMBEDDING_MODEL : "text-embedding-3-small"
+
+  CHAT_MODEL : 
+    gpt-4o-mini: "gpt-4o-mini"
+    gpt-4o: "gpt-4o"
+vllm:
+  aya_expand_8b_vllm: true

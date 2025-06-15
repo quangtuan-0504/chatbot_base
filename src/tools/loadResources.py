@@ -13,12 +13,13 @@ from config.load_config import config
 from tools.indexingMilvus import  IndexingMilvusOriVLLM
 from tools.retrievalAndGeneration import ChatbotRAGvLLM
 from pymilvus import connections, db
+from typing import Dict
 
 
 env_file = find_dotenv()
 load_dotenv(env_file)
 
-def load_resource():
+def load_resource()-> dict:
     print("load resource !")
     re = {}
 

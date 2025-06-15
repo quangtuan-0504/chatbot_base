@@ -44,7 +44,7 @@ class IndexingMilvusOriVLLM:
             )
             # Add fields to schema
             schema.add_field(field_name="pk", datatype=DataType.INT64, is_primary=True)
-            schema.add_field(field_name="vector", datatype=DataType.FLOAT_VECTOR, dim=1024)
+            schema.add_field(field_name="vector", datatype=DataType.FLOAT_VECTOR, dim=1536)
             schema.add_field(field_name="text", datatype=DataType.VARCHAR, max_length=65535)
             schema.add_field(field_name="lst_img_of_chunks", datatype=DataType.ARRAY, element_type=DataType.VARCHAR, max_length = 65535 ,max_capacity=20)
 
@@ -105,6 +105,8 @@ class IndexingMilvusOriVLLM:
                         input=batch_text,
                         model=self.embedding_model_name
                     )
+                    # print(batch_emb.data[0].embedding)
+                    print(len(batch_emb.data[0].embedding))
                     batch_add = []
                     for emb , doc in zip(batch_emb.data , documents[i:i+batch_size]):
                         batch_add.append({

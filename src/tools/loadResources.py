@@ -27,13 +27,15 @@ def load_resource()-> dict:
     
     if config["SERVICE_VECTOR_STORE"] == "MILVUS":
         conn = connections.connect( 
-            host= os.getenv("MILVUS_HOST"),
-            post = os.getenv("MILVUS_PORT")
+            # "host": os.getenv("MILVUS_HOST"),
+            # "port":  os.getenv("MILVUS_PORT"),
+            uri = os.getenv("MILVUS_ENDPOINT"),
+            token =  os.getenv("MILVUS_TOKEN"),
         )
-        db_name = config["MILVUS_DB"]
-        if db_name not in db.list_database():
-            database = db.create_database(db_name)
-        indexing = IndexingMilvusOriVLLM(embedding_model_name="/LLM/EmbeddingModels/BAAI/bge-m3")
+        # db_name = config["MILVUS_DB"]
+        # if db_name not in db.list_database():
+        #     database = db.create_database(db_name)
+        indexing = IndexingMilvusOriVLLM(embedding_model_name="text-embedding-3-small")
         # indexing = None # test mà ko cần load model
         re["indexing"] = indexing
         print("indexing loaded")
@@ -44,6 +46,11 @@ def load_resource()-> dict:
         re["chatbot_aya_expanse_8b_vllm"] = ChatbotRAGvLLM(chat_model_name= "/LLM/LLMs/kevinbazira/aya-expanse-8b-awq-4bit",
                                                            embedding_model_name="/LLM/EmbeddingModels/BAAI/bge-m3")
         print("aya expanse 8b vllm is loaded")
+
+    if config['OPENAI_API_MODEL']['CHAT_MODEL']["gpt-4o-mini"]:        
+        re["gpt-4o-mini"] = ChatbotRAGvLLM(chat_model_name= "gpt-4o-mini",
+                                                           embedding_model_name="text-embedding-3-small")
+        print("gpt-4o-mini is loaded")
 
     return re
 

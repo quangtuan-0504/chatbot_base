@@ -20,19 +20,19 @@ class ChatbotRAGvLLM:
         embedding_model_name : str = None
     ):
         # Cấu hình API OpenAI để sử dụng vLLM
-        openai_api_key_model_chat = "hehedegicungdc"
-        openai_api_urlbase_model_chat = "http://localhost:8000/v1"
+        openai_api_key_model_chat = os.getenv("OPENAI_API_KEY")
+        # openai_api_urlbase_model_chat = "http://localhost:8000/v1"
         self.client_chat_model = OpenAI(
             api_key=openai_api_key_model_chat,
-            base_url=openai_api_urlbase_model_chat,
+            # base_url=openai_api_urlbase_model_chat,
         )
         self.chat_model_name = chat_model_name
 
-        openai_api_key_model_embedding = "hehedegicungdc"
-        openai_api_urlbase_model_embedding = "http://localhost:8001/v1"
+        openai_api_key_model_embedding = os.getenv("OPENAI_API_KEY")
+        # openai_api_urlbase_model_embedding = "http://localhost:8001/v1"
         self.client_embedding_model = OpenAI(
             api_key=openai_api_key_model_embedding,
-            base_url=openai_api_urlbase_model_embedding,
+            # base_url=openai_api_urlbase_model_embedding,
         )
         self.embedding_model_name = embedding_model_name
 

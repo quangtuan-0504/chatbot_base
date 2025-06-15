@@ -25,11 +25,11 @@ class IndexingMilvusOriVLLM:
     def __init__(self, embedding_model_name: str):
         self.clientVectorStore=get_milvus_connection()
 
-        openai_api_key_model_embedding = "hehedegicungdc"
-        openai_api_urlbase_model_embedding = "http://localhost:8001/v1"
+        openai_api_key_model_embedding = os.getenv("OPENAI_API_KEY")
+        # openai_api_urlbase_model_embedding = "http://localhost:8001/v1"
         self.client_embedding_model = OpenAI(
             api_key=openai_api_key_model_embedding,
-            base_url=openai_api_urlbase_model_embedding,
+            # base_url=openai_api_urlbase_model_embedding,
         )
         self.embedding_model_name = embedding_model_name
 

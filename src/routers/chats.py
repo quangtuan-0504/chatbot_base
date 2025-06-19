@@ -139,7 +139,9 @@ async def streamChatwebsocket(websocket: WebSocket):
             raise HTTPException(status_code=404, detail="Chat not found")
                 
 
-    chatbot_aya_expanse_8b = resource["chatbot_aya_expanse_8b_vllm"]
+    # chatbot_aya_expanse_8b = resource["chatbot_aya_expanse_8b_vllm"]
+    gpt4omini = resource["gpt-4o-mini"]
+
     
     if historyChat:
         for mes in historyChat:
@@ -157,7 +159,7 @@ async def streamChatwebsocket(websocket: WebSocket):
     if sysMode == "RAG":
         if llm == "aya-expanse-8b":
             collection_name_inVS = f"hello{collection_name_inVS}" if collection_name_inVS else None                
-            for response_chunk in chatbot_aya_expanse_8b.chat_stream(query=question, historyChat=historyChat, collection_name = collection_name_inVS, file_names = fileNames):
+            for response_chunk in gpt4omini.chat_stream(query=question, historyChat=historyChat, collection_name = collection_name_inVS, file_names = fileNames):
                 if type(response_chunk) == str:
                     if response_chunk != "[END]":
                         answer += response_chunk
@@ -166,3 +168,22 @@ async def streamChatwebsocket(websocket: WebSocket):
                     source = response_chunk
                     await websocket.send_text(json.dumps(response_chunk)) # gửi đi str      
             await websocket.close()
+        elif llm == "gpt-4o-mini":
+            collection_name_inVS = f"hello{collection_name_inVS}" if collection_name_inVS else None                
+            for response_chunk in gpt4omini.chat_stream(query=question, historyChat=historyChat, collection_name = collection_name_inVS, file_names = fileNames):
+                if type(response_chunk) == str:
+                    if response_chunk != "[END]":
+                        answer += response_chunk
+                    await websocket.send_text(response_chunk)
+                elif type(response_chunk) == list:
+                    source = response_chunk
+                    await websocket.send_text(json.dumps(response_chunk)) # gửi đi str      
+            await websocket.close()
+    # new_items = []
+    # if historyChat[-1]["role"] == "assistant":
+    #     new_items.append({"role": "user", "content": question})
+    # new_items.append({"role": "assistant", "content": {"answer" : answer, "source" : source}})
+    # result = chat_table.update_one(
+    #     {"_id": ObjectId(chatId), "userId": userId},
+    #     {"$set":{"updateAt" : datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")} ,"$push": {"history": {"$each": new_items}}}
+    # )

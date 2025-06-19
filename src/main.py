@@ -26,9 +26,9 @@ app = FastAPI(title="Chatbot pro",lifespan=resourcelifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[""],  # Cho phép tất cả các nguồn gốc. Bạn có thể giới hạn lại theo nhu cầu
+    allow_origins=["*"],  # Cho phép tất cả các nguồn gốc. Bạn có thể giới hạn lại theo nhu cầu
     allow_credentials=True,
-    allow_methods=[""],
+    allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["Content-Disposition"],  # Quan trọng: Cho phép header này hiển thị
 )

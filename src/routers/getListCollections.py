@@ -24,4 +24,4 @@ async def get_collections_of_user(userId: str):
             
         return lst
     else:
-        return None
+        return []

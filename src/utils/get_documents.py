@@ -1,6 +1,6 @@
 import sys
 sys.path.append("")
-from src.utils.process_file.process_pdf_file import load_pdf
+# from src.utils.process_file.process_pdf_file import load_pdf
 from src.utils.process_file.process_xlsx_file import load_xlsx
 from src.utils.process_file.process_docx_file import load_docx
 
@@ -38,11 +38,12 @@ def load_document(filepath : str,
     try:
         if filepath.endswith('.pdf'):
            
-            docs = load_pdf(
-                filepath,
-                collection_name=collection_name,
-                mongo_file_id=mongo_file_id
-            )
+            # docs = load_pdf(
+            #     filepath,
+            #     collection_name=collection_name,
+            #     mongo_file_id=mongo_file_id
+            # )
+            pass
 
         elif filepath.endswith('.docx'):
            

@@ -15,7 +15,7 @@ router = APIRouter(
 @router.get("/listchats/{userId}")
 async def getListChatOfUser(userId):
     db = resource["mongoDB"]
-    chat_table = db["chats_2"]
+    chat_table = db["chats"]
     lst_chat = chat_table.find({"userId": userId},{"_id": 1,"title": 1, "createAt": 1 , "updateAt" : 1})
     print(lst_chat)
     if not lst_chat:
@@ -38,7 +38,7 @@ async def getListChatOfUser(userId):
 async def getChatHistory(chatId: str, request: request_GetChat):
     db = resource["mongoDB"]
     userId= request.userId
-    chat_table = db["chats_2"]
+    chat_table = db["chats"]
     chat = chat_table.find_one({"_id": ObjectId(chatId), "userId": userId})
     # print(chat)
     if not chat:
@@ -49,7 +49,7 @@ async def getChatHistory(chatId: str, request: request_GetChat):
 @router.post("/delete-chat/{chatId}")
 async def deleteChat(chatId: str):
     db = resource["mongoDB"]
-    chat_table = db["chats_2"]
+    chat_table = db["chats"]
     # for x in chat_table.find():
     #     print(x)
     try:
@@ -71,7 +71,7 @@ async def createNewChat(request: request_AddChat):
     userId = request.userId
     text = request.text
     db = resource["mongoDB"]
-    chat_table = db["chats_2"]
+    chat_table = db["chats"]
     chat = {"title" : text[:40] ,
                 "userId" : userId ,
                 "createAt" : datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S") ,
@@ -92,7 +92,7 @@ async def saveMessage(chatId : str, request: request_UpdateChat):
 
 
     db = resource["mongoDB"]
-    chat_table = db['chats_2']
+    chat_table = db['chats']
     new_items = []
     if question:
         new_items.append({"role": "user", "content": question})
@@ -130,7 +130,7 @@ async def streamChatwebsocket(websocket: WebSocket):
     print("fileNames:" , fileNames)
 
     db = resource["mongoDB"]
-    chat_table = db['chats_2']
+    chat_table = db['chats']
     historyChat = []
     if chatId:
         chat = chat_table.find_one({"_id": ObjectId(chatId), "userId": userId})

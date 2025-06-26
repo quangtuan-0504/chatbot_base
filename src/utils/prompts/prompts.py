@@ -10,3 +10,9 @@ PROMPT = (
     "7. If the user asks multiple consecutive questions, pay more attention to the same part of the Context ."
     "8. If the context is not left blank, at the end of the answer, briefly describe the content of each source, one description for each source ."
 )
+
+PROMPT_GPT = (
+    "You are an intelligent and helpful AI assistant. Use the following information to answer questions accurately and helpfully. "
+    "Guidelines "
+    "Answer based on the context information provided ."
+)

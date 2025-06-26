@@ -105,7 +105,85 @@ async def saveMessage(chatId : str, request: request_UpdateChat):
     if result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Chat not found or not updated")
     return {"chatId": chatId}
+@router.post("/response")
+async def getResponse(request: request_Chat):
+    userId = request.userId
+    prompt = request.question
+    chatId = request.chatId
+    fileNames = request.fileNames
+    collection_name_inVS =  request.collection_name_inVS
+    llm = request.LLM
+    sysMode = request.sysMode
+    searchMode = request.searchMode
 
+    db = resource["mongoDB"]
+    chat_table = db['chats_2']
+    historyChat = []
+    if chatId:
+        chat = chat_table.find_one({"_id": ObjectId(chatId), "userId": userId})
+        historyChat = chat['history']
+        if not chat:
+            raise HTTPException(status_code=404, detail="Chat not found")
+
+    print("gửi request thành công")
+    print(prompt)
+    print(type(collection_name_inVS))
+    print('collection_name_inVS:',collection_name_inVS)
+    print('llm:',llm)
+    print('chatId:',chatId)
+    print("fileNames:" , fileNames)
+   
+    chatbot_aya_expanse_8b = resource["chatbot_aya_expanse_8b_vllm"]
+    
+    if historyChat:
+        for mes in historyChat:
+            if 'answer' in mes['content']:
+                mes['content'] = mes['content']['answer']
+            if 'Nguồn:' in mes['content']:
+                mes['content'] = " ".join(mes['content'].split('Nguồn:')[0])
+            elif 'Source:' in mes['content']:
+                mes['content'] = " ".join(mes['content'].split('Source:')[0])
+    # print('historyChat:',historyChat)
+    if sysMode == "RAG":
+        if llm == "aya-expanse-8b":
+            collection_name_inVS = f"hello{collection_name_inVS}" if collection_name_inVS else None
+            print("#############")
+            response = chatbot_aya_expanse_8b.chat(query=prompt, historyChat=historyChat, collection_name = collection_name_inVS, file_names = fileNames)
+            
+
+        elif llm == "gpt-4o-mini":
+            response = "nạp vip để dùng"
+        elif llm == "gpt-4o":
+            response = "nạp vip để dùng"
+    elif sysMode == "LightRAG":
+        pass
+
+    if not chatId:
+        chat_collection = db["chats_2"]
+        chat = {"title" : prompt[:40] ,
+                    "userId" : userId ,
+                    "createAt" : datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S") ,
+                    "updateAt" : datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S") ,
+                    "history" : [{"role": "user","content": prompt},
+                                 {"role": "assistant","content": response}]
+                }
+        newChat = chat_collection.insert_one(chat)
+        chatId = str(newChat.inserted_id)
+    else:
+        new_items = []
+        if prompt:
+            new_items.append({"role": "user", "content": prompt})
+        new_items.append({"role": "assistant", "content": response})
+        chat_collection = db["chats_2"]
+        result = chat_collection.update_one(
+            {"_id": ObjectId(chatId), "userId": userId},
+            {"$set":{"updateAt" : datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")} ,"$push": {"history": {"$each": new_items}}}
+        )
+
+        if result.modified_count == 0:
+            raise HTTPException(status_code=404, detail="Chat not found or not updated")
+
+    return {"id" : chatId}
 
 @router.websocket("/chat-stream")
 async def streamChatwebsocket(websocket: WebSocket):
@@ -124,6 +202,7 @@ async def streamChatwebsocket(websocket: WebSocket):
     sysMode = request.get("sysMode")
 
     print("gửi request thành công")
+    print("chatId:", chatId)
     print(question)
     print(type(collection_name_inVS))
     print('collection_name_inVS:',collection_name_inVS)
@@ -179,11 +258,30 @@ async def streamChatwebsocket(websocket: WebSocket):
                     source = response_chunk
                     await websocket.send_text(json.dumps(response_chunk)) # gửi đi str      
             await websocket.close()
-    # new_items = []
-    # if historyChat[-1]["role"] == "assistant":
-    #     new_items.append({"role": "user", "content": question})
-    # new_items.append({"role": "assistant", "content": {"answer" : answer, "source" : source}})
-    # result = chat_table.update_one(
-    #     {"_id": ObjectId(chatId), "userId": userId},
-    #     {"$set":{"updateAt" : datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")} ,"$push": {"history": {"$each": new_items}}}
-    # )
+
+    if not chatId:
+        chat = {
+            "title" : question[:40] ,
+            "userId" : userId ,
+            "createAt" : datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S") ,
+            "updateAt" : datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S") ,
+            "history" : [
+                {"role": "user","content": question},
+                {"role": "assistant","content": {"answer" : answer, "source" : source}}]
+        }
+        newChat = chat_table.insert_one(chat)
+        chatId = str(newChat.inserted_id)
+    else:
+        new_items = []
+        if historyChat[-1]["role"] == "assistant":
+            new_items.append({"role": "user", "content": question})
+        new_items.append({"role": "assistant", "content": {"answer" : answer, "source" : source}})
+        result = chat_table.update_one(
+            {"_id": ObjectId(chatId), "userId": userId},
+            {"$set":{"updateAt" : datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")} ,"$push": {"history": {"$each": new_items}}}
+        )
+
+        if result.modified_count == 0:
+            raise HTTPException(status_code=404, detail="Chat not found or not updated")
+    return {"chatId" : chatId}
+    

@@ -7,6 +7,7 @@ sys.path.append(os.path.abspath(os.path.join(
 from src.utils.prompts.prompts import PROMPT
 from typing import List
 from openai import OpenAI
+from pprint import pprint
 
 from src.helpers.Milvus.milvus import get_milvus_connection
 from src.utils.searchers import vicinity_search
@@ -135,7 +136,7 @@ class ChatbotRAGvLLM:
                 lower_bound = 1 
             )
             print("search time:", time.time()-start)
-            print(total_text_retrieved)
+            # print(total_text_retrieved)
             
             # Xây dựng danh sách messages cho OpenAI API
             messages = [
@@ -155,10 +156,12 @@ class ChatbotRAGvLLM:
             if messages[-1]["role"] == "assistant" or len(messages)==1:
                 messages.append({"role": "user", "content": query})
 
+            # print("messages:", messages)
+
             response = self.client_chat_model.chat.completions.create(
                     model= self.chat_model_name,  # Đảm bảo model này đã được chạy trên vLLM
                     messages=messages,
-                    max_tokens=512,
+                    max_tokens=1024,
                     temperature=0.1,
                     stream = True
             )

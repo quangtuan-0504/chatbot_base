@@ -109,7 +109,7 @@ async def saveMessage(chatId : str, request: request_UpdateChat):
 async def getResponse(request: request_Chat):
     userId = request.userId
     prompt = request.question
-    chatId = request.chatId
+    chatId = request.chatId # None if new chat or str if old chat
     fileNames = request.fileNames
     collection_name_inVS =  request.collection_name_inVS
     llm = request.LLM
@@ -187,101 +187,114 @@ async def getResponse(request: request_Chat):
 
 @router.websocket("/chat-stream")
 async def streamChatwebsocket(websocket: WebSocket):
+
     await websocket.accept()# chấp nhận mở 1 kết nối
-    
+    try:
+        data = await websocket.receive_text()# nhận request
+        request = json.loads(data)  # Chuyển đổi JSON từ client
+
+        userId = request.get("userId")
+        question = request.get("question")
+        chatId = request.get("chatId") # None if new chat or str if old chat
+        fileNames = request.get("fileNames")
+        collection_name_inVS = request.get("collection_name_inVS")
+        llm = request.get("LLM")
+        sysMode = request.get("sysMode")
+
+        print("gửi request thành công")
+        print("chatId:", chatId)
+        print(question)
+        print(type(collection_name_inVS))
+        print('collection_name_inVS:',collection_name_inVS)
+        print("fileNames:" , fileNames)
+
+        db = resource["mongoDB"]
+        chat_table = db['chats']
+        history_chat_processed = [] # chat history to push into model
+        if chatId: # if old chat , chat history is definitely not empty , if it empty , have save error
+            chat = chat_table.find_one({"_id": ObjectId(chatId), "userId": userId})
+            if chat:
+                history_chat = chat['history']
+                if history_chat:
+                    for mes in history_chat:
+                        if 'answer' in mes['content']:
+                            mes['content'] = mes['content']['answer']
+                        if 'Nguồn:' in mes['content']:
+                            mes['content'] = " ".join(mes['content'].split('Nguồn:')[0])
+                        elif 'Source:' in mes['content']:
+                            mes['content'] = " ".join(mes['content'].split('Source:')[0])
+                        history_chat_processed.append({
+                            'role' : mes['role'],
+                            'content' : mes['content']
+                        })
+                else:
+                    raise HTTPException(status_code=404, detail="Chat history not found, can be error save history chat")
+            else:
+                raise HTTPException(status_code=404, detail="Chat not found, can be error save chat")
+
+        # chatbot_aya_expanse_8b = resource["chatbot_aya_expanse_8b_vllm"]
+        gpt4omini = resource["gpt-4o-mini"]
+
+        answer = ""
+        source = []
+        if sysMode == "RAG":
+            if llm == "aya-expanse-8b":
+                collection_name_inVS = f"hello{collection_name_inVS}" if collection_name_inVS else None                
+                for response_chunk in gpt4omini.chat_stream(query=question, historyChat=history_chat_processed, collection_name = collection_name_inVS, file_names = fileNames):
+                    if type(response_chunk) == str:
+                        if response_chunk != "[END]":
+                            answer += response_chunk
+                        await websocket.send_text(response_chunk)
+                    elif type(response_chunk) == list:
+                        source = response_chunk
+                        await websocket.send_text(json.dumps(response_chunk)) # gửi đi str      
+            elif llm == "gpt-4o-mini":
+                collection_name_inVS = f"hello{collection_name_inVS}" if collection_name_inVS else None                
+                for response_chunk in gpt4omini.chat_stream(query=question, historyChat=history_chat_processed, collection_name = collection_name_inVS, file_names = fileNames):
+                    if type(response_chunk) == str:
+                        if response_chunk != "[END]":
+                            answer += response_chunk
+                        await websocket.send_text(response_chunk)
+                    elif type(response_chunk) == list:
+                        source = response_chunk
+                        await websocket.send_text(json.dumps(response_chunk)) # gửi đi str      
+
+        if chatId is None or chatId == "":
+            try:
+                chat = {
+                    "title": question[:40],
+                    "userId": userId,
+                    "createAt": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
+                    "updateAt": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
+                    "history": [
+                        {"role": "user", "content": question},
+                        {"role": "assistant", "content": {"answer": answer, "source": source}}
+                    ]
+                }
+                newChat = chat_table.insert_one(chat)
+                chatId = str(newChat.inserted_id)
+                # Gửi chatId đến client qua WebSocket
+                await websocket.send_text(json.dumps({"chatId": chatId}))
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Create new chat failed: {str(e)}")
+        else:
+            new_items = []
+            if history_chat_processed[-1]["role"] == "assistant":
+                new_items.append({"role": "user", "content": question})
+            new_items.append({"role": "assistant", "content": {"answer": answer, "source": source}})
+            result = chat_table.update_one(
+                {"_id": ObjectId(chatId), "userId": userId},
+                {"$set": {"updateAt": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")}, "$push": {"history": {"$each": new_items}}}
+            )
+            if result.modified_count == 0:
+                raise HTTPException(status_code=404, detail="Chat not found or not updated")
+            # Gửi chatId đến client qua WebSocket
+            await websocket.send_text(json.dumps({"chatId": chatId}))
+
+        # Đóng kết nối WebSocket
+        await websocket.close()
+    except HTTPException as e:
+        await websocket.send_text(json.dumps({"error": str(e.detail)}))
+        await websocket.close()
+        raise
         
-    data = await websocket.receive_text()# nhận request
-    request = json.loads(data)  # Chuyển đổi JSON từ client
-
-    userId = request.get("userId")
-    question = request.get("question")
-    chatId = request.get("chatId")
-    fileNames = request.get("fileNames")
-    collection_name_inVS = request.get("collection_name_inVS")
-    llm = request.get("LLM")
-    sysMode = request.get("sysMode")
-
-    print("gửi request thành công")
-    print("chatId:", chatId)
-    print(question)
-    print(type(collection_name_inVS))
-    print('collection_name_inVS:',collection_name_inVS)
-    print("fileNames:" , fileNames)
-
-    db = resource["mongoDB"]
-    chat_table = db['chats']
-    historyChat = []
-    if chatId:
-        chat = chat_table.find_one({"_id": ObjectId(chatId), "userId": userId})
-        historyChat = chat['history']
-        if not chat:
-            raise HTTPException(status_code=404, detail="Chat not found")
-                
-
-    # chatbot_aya_expanse_8b = resource["chatbot_aya_expanse_8b_vllm"]
-    gpt4omini = resource["gpt-4o-mini"]
-
-    
-    if historyChat:
-        for mes in historyChat:
-            if 'answer' in mes['content']:
-                mes['content'] = mes['content']['answer']
-            if 'Nguồn:' in mes['content']:
-                mes['content'] = " ".join(mes['content'].split('Nguồn:')[0])
-            elif 'Source:' in mes['content']:
-                mes['content'] = " ".join(mes['content'].split('Source:')[0])
-    # print('historyChat:',historyChat)
-    # xin cực kỳ lưu ý ràng chỗ này history đã có 1 message là question của user nha chứ k phải []
-
-    answer = ""
-    source = []
-    if sysMode == "RAG":
-        if llm == "aya-expanse-8b":
-            collection_name_inVS = f"hello{collection_name_inVS}" if collection_name_inVS else None                
-            for response_chunk in gpt4omini.chat_stream(query=question, historyChat=historyChat, collection_name = collection_name_inVS, file_names = fileNames):
-                if type(response_chunk) == str:
-                    if response_chunk != "[END]":
-                        answer += response_chunk
-                    await websocket.send_text(response_chunk)
-                elif type(response_chunk) == list:
-                    source = response_chunk
-                    await websocket.send_text(json.dumps(response_chunk)) # gửi đi str      
-            await websocket.close()
-        elif llm == "gpt-4o-mini":
-            collection_name_inVS = f"hello{collection_name_inVS}" if collection_name_inVS else None                
-            for response_chunk in gpt4omini.chat_stream(query=question, historyChat=historyChat, collection_name = collection_name_inVS, file_names = fileNames):
-                if type(response_chunk) == str:
-                    if response_chunk != "[END]":
-                        answer += response_chunk
-                    await websocket.send_text(response_chunk)
-                elif type(response_chunk) == list:
-                    source = response_chunk
-                    await websocket.send_text(json.dumps(response_chunk)) # gửi đi str      
-            await websocket.close()
-
-    if not chatId:
-        chat = {
-            "title" : question[:40] ,
-            "userId" : userId ,
-            "createAt" : datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S") ,
-            "updateAt" : datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S") ,
-            "history" : [
-                {"role": "user","content": question},
-                {"role": "assistant","content": {"answer" : answer, "source" : source}}]
-        }
-        newChat = chat_table.insert_one(chat)
-        chatId = str(newChat.inserted_id)
-    else:
-        new_items = []
-        if historyChat[-1]["role"] == "assistant":
-            new_items.append({"role": "user", "content": question})
-        new_items.append({"role": "assistant", "content": {"answer" : answer, "source" : source}})
-        result = chat_table.update_one(
-            {"_id": ObjectId(chatId), "userId": userId},
-            {"$set":{"updateAt" : datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")} ,"$push": {"history": {"$each": new_items}}}
-        )
-
-        if result.modified_count == 0:
-            raise HTTPException(status_code=404, detail="Chat not found or not updated")
-    return {"chatId" : chatId}
-    

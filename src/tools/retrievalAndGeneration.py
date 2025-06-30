@@ -4,7 +4,7 @@ import time
 sys.path.append(os.path.abspath(os.path.join(
     os.path.dirname(__file__), '..', '..')))
 
-from src.utils.prompts.prompts import PROMPT
+from src.utils.prompts.prompts import PROMPT, PROMPT_GPT
 from typing import List
 from openai import OpenAI
 from pprint import pprint
@@ -136,11 +136,11 @@ class ChatbotRAGvLLM:
                 lower_bound = 1 
             )
             print("search time:", time.time()-start)
-            # print(total_text_retrieved)
+            print(total_text_retrieved)
             
             # Xây dựng danh sách messages cho OpenAI API
             messages = [
-                { "role": "system", "content": PROMPT.format(
+                { "role": "system", "content": PROMPT_GPT.format(
                         query_ = query
                     )
                 },

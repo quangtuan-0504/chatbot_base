@@ -18,8 +18,15 @@ from src.routers import (
     addUserToCollection,
 )
 
+from loggers.logapp import logger
+from configs import settings
 
-app = FastAPI(title="Chatbot pro",lifespan=resourcelifespan)
+logger.info(" Starting FastAPI application...")
+
+app = FastAPI(
+    title=settings.app_name,
+    lifespan=resourcelifespan
+)
 
 #print(resource)
 #print($$$$$)

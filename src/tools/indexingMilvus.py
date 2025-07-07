@@ -10,41 +10,38 @@ from tqdm import tqdm
 
 from pymilvus import DataType
 # Bản pymilvus 2.5.x so với 2.2.x chỉ bổ sung thêm các chức năng mới thuận tiện hơn chứ không xóa các chức năng cũ nha
-
-from src.helpers.Milvus.milvus import  get_milvus_connection
 from src.utils.get_documents import load_document
-from src.config.load_config import config
-
-from pymilvus import connections, db
+from configs import settings
+from pymilvus import connections, db, MilvusClient
 from openai import OpenAI
 import time
 
 
 
 class IndexingMilvusOriVLLM:
-    def __init__(self, embedding_model_name: str):
-        self.clientVectorStore=get_milvus_connection()
+    def __init__(
+        self,
+        milvus_client: MilvusClient,
+        openai_client: OpenAI, 
+        embedding_model_name_or_path: str = "text-embedding-3-small"
+    ):
 
-        openai_api_key_model_embedding = os.getenv("OPENAI_API_KEY")
-        # openai_api_urlbase_model_embedding = "http://localhost:8001/v1"
-        self.client_embedding_model = OpenAI(
-            api_key=openai_api_key_model_embedding,
-            # base_url=openai_api_urlbase_model_embedding,
-        )
-        self.embedding_model_name = embedding_model_name
+        self.client_vector_store = milvus_client
+        self.client_embedding_model = openai_client
+        self.embedding_model_name_or_path = embedding_model_name_or_path
 
     def create_collection(self, collection_name: str):
 
-        res = self.clientVectorStore.list_collections()
+        res = self.client_vector_store.list_collections()
         if collection_name not in res:
             # Create schema
-            schema = self.clientVectorStore.create_schema(
+            schema = self.client_vector_store.create_schema(
                 auto_id=True,
                 enable_dynamic_field=True,
             )
             # Add fields to schema
             schema.add_field(field_name="pk", datatype=DataType.INT64, is_primary=True)
-            schema.add_field(field_name="vector", datatype=DataType.FLOAT_VECTOR, dim=1536)
+            schema.add_field(field_name="vector", datatype=DataType.FLOAT_VECTOR, dim=settings.embedding_model['dim'])
             schema.add_field(field_name="text", datatype=DataType.VARCHAR, max_length=65535)
             schema.add_field(field_name="lst_img_of_chunks", datatype=DataType.ARRAY, element_type=DataType.VARCHAR, max_length = 65535 ,max_capacity=20)
 
@@ -58,7 +55,7 @@ class IndexingMilvusOriVLLM:
 
 
             # Prepare index parameters
-            index_params = self.clientVectorStore.prepare_index_params()
+            index_params = self.client_vector_store.prepare_index_params()
 
             # Add indexes
             index_params.add_index(
@@ -77,10 +74,10 @@ class IndexingMilvusOriVLLM:
                 metric_type="COSINE",
                 index_type="IVF_FLAT",
                 index_name="vector_index",
-                params={ "nlist": 128 }
+                params={ "nlist": settings.nlist }  # Number of clusters for IVF index
             )
             # Create a collection with the index loaded simultaneously
-            self.clientVectorStore.create_collection(
+            self.client_vector_store.create_collection(
                 collection_name=collection_name,
                 schema=schema,
                 index_params=index_params
@@ -91,9 +88,15 @@ class IndexingMilvusOriVLLM:
             print(f"Collection {collection_name} already exists.")
             return "error"
 
-    def add_document(self, path_file: str | None, collection_name: str, mongo_document_id : str = "mongo_doc_id" , batch_size=50 ):
+    def add_document(
+        self, 
+        path_file: str | None,
+        collection_name: str,
+        mongo_document_id : str = "mongo_doc_id" ,
+        batch_size=50 
+    ):
         try:
-            if self.clientVectorStore.has_collection(collection_name=collection_name):
+            if self.client_vector_store.has_collection(collection_name=collection_name):
         
                 documents = load_document(filepath=path_file, collection_name=collection_name , mongo_file_id=mongo_document_id )
                 # list document langchain object 
@@ -103,7 +106,7 @@ class IndexingMilvusOriVLLM:
                     # Convert batch text to batch vector
                     batch_emb = self.client_embedding_model.embeddings.create(
                         input=batch_text,
-                        model=self.embedding_model_name
+                        model=self.embedding_model_name_or_path
                     )
                     # print(batch_emb.data[0].embedding)
                     print(len(batch_emb.data[0].embedding))
@@ -122,7 +125,7 @@ class IndexingMilvusOriVLLM:
                         })
                   
 
-                    res = self.clientVectorStore.insert(
+                    res = self.client_vector_store.insert(
                         collection_name=collection_name,
                         data=batch_add
                     )
@@ -141,8 +144,8 @@ class IndexingMilvusOriVLLM:
 
     def delete_collection(self, collection_name: str):
         try:
-            if self.clientVectorStore.has_collection(collection_name=collection_name):
-                self.clientVectorStore.drop_collection(collection_name=collection_name)
+            if self.client_vector_store.has_collection(collection_name=collection_name):
+                self.client_vector_store.drop_collection(collection_name=collection_name)
                 return "successfully"
             return "collection not found"
         except Exception as e:
@@ -150,7 +153,7 @@ class IndexingMilvusOriVLLM:
             return "error"
     def delete_file(self, collection_name: str, file_name: str):
         try:
-            res = self.clientVectorStore.delete(
+            res = self.client_vector_store.delete(
                 collection_name=collection_name,
                 # highlight-next-line
                 filter= f"source in ['{file_name}']"
@@ -166,7 +169,7 @@ if __name__ == "__main__":
         database = db.create_database("tuan_milvus")
 
 
-    indexing = IndexingMilvusOriVLLM(embedding_model_name="/home/tuanndq/test_chatbot/download_model/model/embedding_models/bge/bge-m3-model")
+    indexing = IndexingMilvusOriVLLM(embedding_model_name_or_path="/home/tuanndq/test_chatbot/download_model/model/embedding_models/bge/bge-m3-model")
     indexing.create_collection(collection_name="testne")
     start = time.time()
     indexing.add_document(path_file="test_data/LIVE_MDTV_CapNuoc_CamLam_v.1.0_20240729.docx",collection_name="testne")

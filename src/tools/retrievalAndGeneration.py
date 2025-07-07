@@ -7,9 +7,8 @@ sys.path.append(os.path.abspath(os.path.join(
 from src.utils.prompts.prompts import PROMPT, PROMPT_GPT
 from typing import List
 from openai import OpenAI
-from pprint import pprint
+from pymilvus import MilvusClient
 
-from src.helpers.Milvus.milvus import get_milvus_connection
 from src.utils.searchers import vicinity_search
 
 
@@ -17,25 +16,18 @@ from src.utils.searchers import vicinity_search
 class ChatbotRAGvLLM:
     def __init__(
         self,
-        chat_model_name : str = None,
-        embedding_model_name : str = None
+        chat_model_name : str,
+        embedding_model_name : str,
+        client_chat_model: OpenAI ,
+        client_embedding_model: OpenAI,
+        milvus_client: MilvusClient 
     ):
-        # Cấu hình API OpenAI để sử dụng vLLM
-        openai_api_key_model_chat = os.getenv("OPENAI_API_KEY")
-        # openai_api_urlbase_model_chat = "http://localhost:8000/v1"
-        self.client_chat_model = OpenAI(
-            api_key=openai_api_key_model_chat,
-            # base_url=openai_api_urlbase_model_chat,
-        )
+        self.client_chat_model = client_chat_model
         self.chat_model_name = chat_model_name
 
-        openai_api_key_model_embedding = os.getenv("OPENAI_API_KEY")
-        # openai_api_urlbase_model_embedding = "http://localhost:8001/v1"
-        self.client_embedding_model = OpenAI(
-            api_key=openai_api_key_model_embedding,
-            # base_url=openai_api_urlbase_model_embedding,
-        )
+        self.client_embedding_model = client_embedding_model
         self.embedding_model_name = embedding_model_name
+        self.milvus_client = milvus_client
 
     def chat(self, query: str, historyChat  ,collection_name : str | None  = None, file_names : List | None = None) -> str:
         """
@@ -51,7 +43,6 @@ class ChatbotRAGvLLM:
        
         
         if collection_name:
-            client_milvus = get_milvus_connection()
             # query_vector = self.embeddings.embed_query(query)
             response_emb = self.client_embedding_model.embeddings.create(
                 input=query,
@@ -61,7 +52,7 @@ class ChatbotRAGvLLM:
             query_vector = response_emb.data[0].embedding
 
             total_text_retrieved , lst_file_relevant = vicinity_search(
-                client=client_milvus,
+                client=self.milvus_client,
                 query_vector=query_vector,
                 collection_name=collection_name,
                 limit=3,
@@ -115,7 +106,6 @@ class ChatbotRAGvLLM:
         if collection_name:
             print("have collection")
             start = time.time()
-            client_milvus = get_milvus_connection()
             # query_vector = self.embeddings.embed_query(query)
             response_emb = self.client_embedding_model.embeddings.create(
                 input=query,
@@ -126,7 +116,7 @@ class ChatbotRAGvLLM:
             query_vector = response_emb.data[0].embedding
 
             total_text_retrieved , lst_file_relevant = vicinity_search(
-                client=client_milvus,
+                client=self.milvus_client,
                 query_vector=query_vector,
                 collection_name=collection_name,
                 limit=3,

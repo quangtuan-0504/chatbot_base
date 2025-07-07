@@ -1,25 +1,35 @@
-from pymongo import MongoClient
-from dotenv import load_dotenv
-from dotenv import find_dotenv
 import os
-import sys
+from pymongo import MongoClient
+from dotenv import load_dotenv, find_dotenv
 
 from configs import settings
 
-env_file = find_dotenv()
-# print(env_file)
-load_dotenv(env_file)
+# Load environment variables
+load_dotenv(find_dotenv())
 
 
-def get_mongoDB():
-    MONGO_URL = os.getenv("MONGO_URL")
-    MONGO_DB = settings.MONGO_DB
-    # print(MONGO_URL)
-    client = MongoClient(MONGO_URL)
-    # print(client)
-    db =  client[MONGO_DB]
+def get_mongodb():
+    """
+    Establish connection to MongoDB and return database instance.
+    
+    Returns:
+        Database: MongoDB database instance
+        
+    Raises:
+        ValueError: If MONGO_URL environment variable is not set
+    """
+    mongo_url = os.getenv("MONGO_URL")
+    if not mongo_url:
+        raise ValueError("MONGO_URL environment variable is required")
+    
+    client = MongoClient(mongo_url)
+    db = client[settings.MONGO_DB]
     return db
 
+
 if __name__ == "__main__":
-    db = get_mongoDB()
-    print(db)
+    try:
+        db = get_mongodb()
+        print(f"Connected to database: {db.name}")
+    except Exception as e:
+        print(f"Error connecting to MongoDB: {e}")

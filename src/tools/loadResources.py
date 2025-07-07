@@ -1,67 +1,130 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
-
-from dotenv import load_dotenv
-from dotenv import find_dotenv
 import os
-
 
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__),'..')))
-from helpers.mongoDB.getMongoDB import  get_mongoDB
+from loggers.logapp import logger
+from configs import settings
+from helpers.mongoDB.getMongoDB import  get_mongodb
+from helpers.Milvus.milvus import get_milvus_connection
 from config.load_config import config
 from tools.indexingMilvus import  IndexingMilvusOriVLLM
 from tools.retrievalAndGeneration import ChatbotRAGvLLM
-from pymilvus import connections, db
 from typing import Dict
+from openai import OpenAI
 
-
-env_file = find_dotenv()
-load_dotenv(env_file)
 
 def load_resource()-> dict:
-    print("load resource !")
-    re = {}
+    """Load necessary resources (MongoDB, Milvus, and models)."""
+    resources = {}
 
-    re["mongoDB"] = get_mongoDB()
+    # Load MongoDB
+    try:
+        resources["mongoDB"] = get_mongodb()
+        logger.info("MongoDB connection established.")
+    except Exception as e:
+        logger.error(f"Failed to connect to MongoDB: {str(e)}")
+        raise
+
+    # Load Milvus
+    try:
+        milvus_client = get_milvus_connection()
+        logger.info("Milvus connection established.")
+    except Exception as e:
+        logger.error(f"Failed to connect to Milvus: {str(e)}")
+        raise
     
-    if config["SERVICE_VECTOR_STORE"] == "MILVUS":
-        conn = connections.connect( 
-            # "host": os.getenv("MILVUS_HOST"),
-            # "port":  os.getenv("MILVUS_PORT"),
-            uri = os.getenv("MILVUS_ENDPOINT"),
-            token =  os.getenv("MILVUS_TOKEN"),
+
+    # Get client openai-api
+    if any(model["provider"] == "openai-api" for model in settings.chat_models + [settings.embedding_model]):
+        openai_client = OpenAI(
+            api_key=settings.openai_api_key,
         )
-        # db_name = config["MILVUS_DB"]
-        # if db_name not in db.list_database():
-        #     database = db.create_database(db_name)
-        indexing = IndexingMilvusOriVLLM(embedding_model_name="text-embedding-3-small")
-        # indexing = None # test mà ko cần load model
-        re["indexing"] = indexing
-        print("indexing loaded")
-    elif config["SERVICE_VECTOR_STORE"] == "QDRANT":
-        pass
-   
-    if config['vllm']['aya_expand_8b_vllm']:        
-        re["chatbot_aya_expanse_8b_vllm"] = ChatbotRAGvLLM(chat_model_name= "/LLM/LLMs/kevinbazira/aya-expanse-8b-awq-4bit",
-                                                           embedding_model_name="/LLM/EmbeddingModels/BAAI/bge-m3")
-        print("aya expanse 8b vllm is loaded")
+    else:
+        openai_client = None
+        logger.warning("No use model from openAI, some features may not work.")
+    
+    # Load client embedding model
+    embedding_model = settings.embedding_model
+    try:
+        if embedding_model["provider"] == "openai-api":
+            openai_emb_client = openai_client
+            embedding_model_name_or_path = embedding_model["name"]
+        elif embedding_model["provider"] == "vllm":
+            openai_emb_client = OpenAI(
+                api_key=embedding_model["api_key"],
+                base_url=embedding_model["base_url"],
+            )
+            embedding_model_name_or_path = embedding_model["path"]
+        else:
+            raise ValueError(f"Unsupported embedding model provider: {embedding_model['provider']}")
+        
+        if embedding_model['provider'] in ["openai-api", "vllm"]:
+            indexing = IndexingMilvusOriVLLM(
+                milvus_client = milvus_client,
+                openai_client = openai_emb_client,
+                embedding_model_name_or_path = embedding_model_name_or_path,
+            )
+        elif embedding_model['provider'] == "huggingface-transformers":
+            # indexing = IndexingMilvus(...)
+            pass  # Placeholder for Hugging Face Transformers indexing
+        resources["indexing"] = indexing
+        logger.info("IndexingMilvusOriVLLM loaded.")
+    except Exception as e:
+        logger.error(f"Failed to initialize IndexingMilvusOriVLLM: {str(e)}")
+        raise
+    
+    # Load chat models
+    for model in settings.chat_models:
+        try:
+            name = model["name"]
+            provider = model["provider"]
+            api_key = model["api_key"]
+            base_url = model.get("base_url", "")
+            path = model.get("path", "")
+        
+            if provider == "openai-api":
+                client_chat_model = openai_client
+                chat_model_name = name
+            elif provider == "vllm":
+                client_chat_model = OpenAI(api_key=api_key, base_url=base_url)
+                chat_model_name = path
+            else:
+                logger.warning(f"Unsupported provider {provider} for model {name}")
+                continue
+            
+            # Initialize the ChatbotRAGvLLM with the loaded model
+            if provider in ["openai-api", "vllm"]:
+                logger.info(f"Loading chat model {name} from {provider}...")
+                resources[name] = ChatbotRAGvLLM(
+                    chat_model_name = chat_model_name,
+                    embedding_model_name = embedding_model_name_or_path,
+                    client_chat_model = client_chat_model,
+                    client_embedding_model = openai_emb_client,
+                    milvus_client = milvus_client,
+                )
+            elif provider == "huggingface-transformers":
+                # resources[name] = ChatbotRAGHuggingFace(...)
+                pass
+            logger.info(f"Chat model {name} loaded.")
+        except Exception as e:
+            logger.error(f"Failed to load chat model {name}: {str(e)}")
+            continue  # Skip failed models to allow partial loading
 
-    if config['OPENAI_API_MODEL']['CHAT_MODEL']["gpt-4o-mini"]:        
-        re["gpt-4o-mini"] = ChatbotRAGvLLM(chat_model_name= "gpt-4o-mini",
-                                                           embedding_model_name="text-embedding-3-small")
-        print("gpt-4o-mini is loaded")
-
-    return re
+    return resources
 
 resource = {}
 
-# will be loaded on app startup
 @asynccontextmanager
 async def resourcelifespan(app: FastAPI):
-    # Load the ML model
-    resource.update(load_resource())
-    print(resource)
-    yield
-    # Clean up the ML models and release the resources
-    resource.clear()
+    """Lifespan context manager for FastAPI to load and clean up resources."""
+    logger.info("Loading resources...")
+    try:
+        resource.update(load_resource())
+        logger.info(f"Resources loaded: {list(resource.keys())}")
+        yield
+    finally:
+        logger.info("Cleaning up resources...")
+        resource.clear()
+        logger.info("Resources cleared.")

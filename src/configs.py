@@ -1,16 +1,24 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Union, Dict, List
 from pymilvus import DataType, Function, FunctionType
-
-
+from dotenv import load_dotenv
+from dotenv import find_dotenv
+import os
+env_file = find_dotenv()
+load_dotenv(env_file)
 
 # https://fastapi.tiangolo.com/advanced/settings/
 class Settings(BaseSettings):
     """Configuration settings for Milvus indexing and searchers.
        fixme: https://grok.com/chat/1bdaadba-9fef-4d58-880e-980897be0a97
+       https://grok.com/chat/6c31a7d1-653e-4b70-bb33-daaca8bc9b53
     """
     # ignored if .env file is not set
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8") # extra="ignore"
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        # extra="ignore"
+    )
 
     app_name: str = "Chatbot Pro"
     MILVUS_TYPE: str = "CLOUD" # "CLOUD" OR LOCAL CONTAINER : "DOCKER"
@@ -22,73 +30,48 @@ class Settings(BaseSettings):
 
     DEVICE: int = 0
 
-    # MILVUS, QDRANT, ...
-    SERVICE_VECTOR_STORE:str = "MILVUS"
+    # Structured configuration for chat and embedding models
+    openai_api_key: str = os.getenv("OPENAI_API_KEY")
 
-    chat_model: List[dict] = [
+    chat_models: List[Dict[str, any]] = [
         {
             "name": "gpt-4o-mini",
-            "provider": "openai-api",
+            "provider": "openai-api", # "vllm" or "openai-api"
             "path": "",
-            "type": "chat"
+            "base_url": "",
+            "api_key": "",
         },
-        {
-            "name": "gpt-4o",
-            "provider": "openai-api",
-            "path": "",
-            "type": "chat"
-        },
-        {
-            "name": "aya-expanse-8b",
-            "provider": "huggingface-transformers",
-            "path": "/home/tuanndq/test_chatbot/chatbot/LLM/LLMs/CohereForAI/aya-expanse-8b",
-            "type": "chat"
-        },
-        {
-            "name": "bloom-1b7",
-            "provider": "huggingface-transformers",
-            "path": "/home/tuanndq/test_chatbot/download_model/model/chat_models/bigscience/bloom-1b7",
-            "type": "chat"
-        },
-        {
-            "name": "aya-expanse-8b",
-            "provider": "vllm",
-            "path": "/home/tuanndq/test_chatbot/chatbot/LLM/LLMs/CohereForAI/aya-expanse-8b",
-            "type": "chat"
-        },
-        {
-            "name": "bloom-1b7",
-            "provider": "vllm",
-            "path": "/home/tuanndq/test_chatbot/download_model/model/chat_models/bigscience/bloom-1b7",
-            "type": "chat"
-        }
+        # {
+        #     "name": "aya-expanse-8b",
+        #     "provider": "vllm",
+        #     "path": "/LLM/LLMs/CohereForAI/aya-expanse-8b",
+        #     "base_url": "http://localhost:8000/v1",
+        #     "api_key": os.getenv("VLLM_API_KEY_aya_expanse_8b"),
+        # }
     ]
 
-    embedding_model: List[dict] = [
-        {
-            "name": "text-embedding-3-small",
-            "provider": "openai-api",
-            "path": "",
-            "type": "embedding"
-        },
-        {
-            "name": "bge-m3-model",
-            "provider": "huggingface-transformers",
-            "path": "/home/tuanndq/test_chatbot/download_model/model/embedding_models/bge/bge-m3-model",
-            "type": "embedding"
-        },
-        {
-            "name": "bge-m3-model",
-            "provider": "vllm",
-            "path": "/home/tuanndq/test_chatbot/download_model/model/embedding_models/bge/bge-m3-model",
-            "type": "embedding"
-        }
-    ]
-
+    # Configuration for indexing
+    embedding_model: Dict[str, any] = {
+        "name": "text-embedding-3-small",
+        "provider": "openai-api",
+        "path": "", #"/LLM/EmbeddingModels/BAAI/bge-m3",
+        "base_url": "",# "http://localhost:8005/v1",
+        "api_key": "",  # Optional, if using vLLM or other providers
+        "dim": 1536,  # Dimension of the embedding vector
+    }
 
     batch_size: int = 500
     nprobe: int = 10
     limit_per_qr: int = 50
+    nlist: int = 128  # Number of clusters for IVF index
+
+    def __init__(self):
+        super().__init__()
+        # Validate API keys
+        if not self.openai_api_key and any(model["provider"] == "openai-api" for model in self.chat_models + [self.embedding_model]):
+            raise ValueError("OPENAI_API_KEY is required for OpenAI models")
+        # if any(model["provider"] == "vllm" for model in self.chat_models):
+        #     raise ValueError("VLLM_API_KEY is required for vLLM models")
 
 settings = Settings()
 

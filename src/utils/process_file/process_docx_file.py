@@ -4,7 +4,7 @@ from docx import Document as DocumentPythonDocx
 
 import sys
 sys.path.append("")
-from src.config.load_config import config
+from src.configs import settings
 import uuid
 from typing import List
 import os
@@ -21,7 +21,7 @@ def load_docx(
     # Mở file .docx
     doc = DocumentPythonDocx(file_path)
 
-    FOLDER_SAVE_IMG = config["PATH_SAVE_IMG_OF_FILE"]
+    FOLDER_SAVE_IMG = settings.PATH_SAVE_IMG_OF_FILE
     file_name = os.path.basename(file_path)
     # lưu ảnh theo collection + file_name
     path_to_save_img_of_file = os.path.join(FOLDER_SAVE_IMG,collection_name, "".join(file_name.split('.')[:-1]))

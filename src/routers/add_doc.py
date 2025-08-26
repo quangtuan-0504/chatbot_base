@@ -3,8 +3,7 @@ from ..tools.load_resources import resource
 from datetime import datetime , timezone
 from fastapi.responses import JSONResponse
 import os
-from src.config.load_config import config
-
+from ..configs import settings
 
 
 router = APIRouter(
@@ -54,9 +53,9 @@ async def add_document(userId:str,
             raise HTTPException(status_code=500, detail="file already exists in collection")
         else: 
             # Bạn có thể lưu file vào đĩa hoặc cơ sở dữ liệu tại đây
-            if not os.path.exists(f"{config['PATH_SAVE_FILE_UPLOAD']}/{collection_name}"):
-                os.makedirs(f"{config['PATH_SAVE_FILE_UPLOAD']}/{collection_name}")
-            with open(f"{config['PATH_SAVE_FILE_UPLOAD']}/{collection_name}/{file.filename}", "wb") as f:
+            if not os.path.exists(f"{settings.PATH_SAVE_FILE_UPLOAD}/{collection_name}"):
+                os.makedirs(f"{settings.PATH_SAVE_FILE_UPLOAD}/{collection_name}")
+            with open(f"{settings.PATH_SAVE_FILE_UPLOAD}/{collection_name}/{file.filename}", "wb") as f:
                 f.write(file_content)
 
         collection_table = db['collection']
@@ -74,7 +73,7 @@ async def add_document(userId:str,
         fileAdd = document_collection.insert_one({"collection_id": collection_id,
                                             "description": description,
                                             "file_name": file.filename,
-                                            "path": f"{config['PATH_SAVE_FILE_UPLOAD']}/{collection_name}/{file.filename}",
+                                            "path": f"{settings.PATH_SAVE_FILE_UPLOAD}/{collection_name}/{file.filename}",
                                             "addAt": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
                                             "type": file.filename.split('.')[-1],
                                             "size": file_size})
@@ -82,7 +81,7 @@ async def add_document(userId:str,
         ###############
         indexing = resource["indexing"]
         status = indexing.add_document(
-            path_file=f"{config['PATH_SAVE_FILE_UPLOAD']}/{collection_name}/{file.filename}" , 
+            path_file=f"{settings.PATH_SAVE_FILE_UPLOAD}/{collection_name}/{file.filename}" , 
             collection_name="hello" + collection_id,# tên collection trong milvus sẽ là id của collection trong mongoDB
             mongo_document_id=str(fileAdd.inserted_id)
         )

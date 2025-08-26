@@ -1,6 +1,6 @@
 from fastapi import Form, APIRouter
 from ..tools.load_resources import resource
-from src.config.load_config import config
+from ..configs import settings
 from bson import ObjectId
 import shutil
 import os
@@ -32,6 +32,6 @@ async def deleteDoc(userId: str, collection_id: str = Form(...),file_id : str = 
     print(stt)
 
     # 4. Xóa các ảnh liên quan đến file
-    if os.path.exists(f"{config['PATH_SAVE_IMG_OF_FILE']}/hello{collection_id}/{file_name}"):
-        os.remove(f"{config['PATH_SAVE_IMG_OF_FILE']}/hello{collection_id}/{file_name}")
+    if os.path.exists(f"{settings.PATH_SAVE_IMG_OF_FILE}/hello{collection_id}/{file_name}"):
+        os.remove(f"{settings.PATH_SAVE_IMG_OF_FILE}/hello{collection_id}/{file_name}")
     return {"collection_id": collection_id, "file_id": file_id}

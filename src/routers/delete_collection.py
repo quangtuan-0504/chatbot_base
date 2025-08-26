@@ -1,7 +1,7 @@
 from fastapi import Form, APIRouter
 
 from ..tools.load_resources import resource
-from src.config.load_config import config
+from ..configs import settings
 from bson import ObjectId
 import shutil
 import os
@@ -41,10 +41,10 @@ async def deleteCollection(userId: str, collection_id : str = Form(...), collect
 
     # xóa folder chứa file của collection
 
-    if os.path.exists(f"{config['PATH_SAVE_FILE_UPLOAD']}/{collection_name}"):
-        shutil.rmtree(f"{config['PATH_SAVE_FILE_UPLOAD']}/{collection_name}")
+    if os.path.exists(f"{settings.PATH_SAVE_FILE_UPLOAD}/{collection_name}"):
+        shutil.rmtree(f"{settings.PATH_SAVE_FILE_UPLOAD}/{collection_name}")
 
     # xóa folder chứa ảnh của từng file của collection
-    if os.path.exists(f"{config['PATH_SAVE_IMG_OF_FILE']}/hello{collection_id}"):
-        shutil.rmtree(f"{config['PATH_SAVE_IMG_OF_FILE']}/hello{collection_id}")
+    if os.path.exists(f"{settings.PATH_SAVE_IMG_OF_FILE}/hello{collection_id}"):
+        shutil.rmtree(f"{settings.PATH_SAVE_IMG_OF_FILE}/hello{collection_id}")
     return {"collection_id": collection_id}

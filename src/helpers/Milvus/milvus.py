@@ -1,6 +1,5 @@
 import os 
 from pymilvus import MilvusClient,db, connections
-from dotenv import load_dotenv, find_dotenv
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(
@@ -8,25 +7,20 @@ sys.path.append(os.path.abspath(os.path.join(
 from configs import settings
 from loggers.logapp import logger
 
-# Tìm đường dẫn đến file .env
-dotenv_path = find_dotenv()
-# Load biến môi trường từ file .env
-load_dotenv(dotenv_path)
-
 def get_milvus_connection_args():
     connection_type  = settings.MILVUS_TYPE
     if connection_type =='CLOUD':
         connection_args = { # This case use only 1 cluster(database) default if you have free version cloud.
-            "uri": os.getenv("MILVUS_ENDPOINT"),
-            "token":  os.getenv("MILVUS_TOKEN"),
+            "uri": settings.MILVUS_ENDPOINT,
+            "token":  settings.MILVUS_TOKEN,
             # "db_name": settings.MILVUS_DB
         }
     else:
         connection_args = {
-            # "host": os.getenv("MILVUS_HOST"),
-            # "port":  os.getenv("MILVUS_PORT"),
-            "uri": os.getenv("MILVUS_ENDPOINT"), # if use this, it include host and port
-            "token":  os.getenv("MILVUS_TOKEN"),
+            # "host": settings.MILVUS_HOST,
+            # "port":  settings.MILVUS_PORT,
+            "uri": settings.MILVUS_ENDPOINT,
+            "token":  settings.MILVUS_TOKEN,
             "db_name" : settings.MILVUS_DB
         }
 
@@ -35,10 +29,10 @@ def get_milvus_connection_args():
 def create_database_in_milvus():
     if settings.MILVUS_TYPE == 'DOCKER':
         conn = connections.connect( 
-            # "host": os.getenv("MILVUS_HOST"),
-            # "port":  os.getenv("MILVUS_PORT"),
-            uri = os.getenv("MILVUS_ENDPOINT"),
-            token =  os.getenv("MILVUS_TOKEN"),
+            # "host": settings.MILVUS_HOST,
+            # "port":  settings.MILVUS_PORT,
+            uri = settings.MILVUS_ENDPOINT,
+            token =  settings.MILVUS_TOKEN,
         )
         db_name = settings.MILVUS_DB
         logger.info("connect: ", conn)
@@ -48,8 +42,8 @@ def create_database_in_milvus():
             database = db.create_database(db_name)
         # OR use this code
         # client = MilvusClient(
-        #     uri = os.getenv("MILVUS_ENDPOINT"),
-        #     token =  os.getenv("MILVUS_TOKEN"),
+        #     uri = settings.MILVUS_ENDPOINT,
+        #     token =  settings.MILVUS_TOKEN,
         # )
         # db_name = settings.MILVUS_DB
         # logger.info("connect: ", conn)

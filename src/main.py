@@ -5,17 +5,17 @@ import os
 
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__),'..')))
-from src.tools.loadResources import resourcelifespan
+from tools.load_resources import resourcelifespan
 from src.routers import ( 
     chats,
-    newCollection,
-    addDoc,
-    deleteCollection,
-    deleteDoc,
-    downloadFile,
-    getListCollections,
-    getListDocOfCollection,
-    addUserToCollection,
+    add_doc,
+    delete_collection,
+    delete_doc,
+    download_file,
+    get_list_collections,
+    add_user_to_collection,
+    get_lst_doc_in_collection,
+    new_collection
 )
 
 from loggers.logapp import logger
@@ -27,9 +27,6 @@ app = FastAPI(
     title=settings.app_name,
     lifespan=resourcelifespan
 )
-
-#print(resource)
-#print($$$$$)
 
 app.add_middleware(
     CORSMiddleware,
@@ -65,14 +62,14 @@ async def get_department(userId: str):
 
 
 app.include_router(chats.router)
-app.include_router(newCollection.router)
-app.include_router(addDoc.router)
-app.include_router(deleteCollection.router)
-app.include_router(deleteDoc.router)
-app.include_router(downloadFile.router)
-app.include_router(getListCollections.router)
-app.include_router(getListDocOfCollection.router)
-app.include_router(addUserToCollection.router)
+app.include_router(new_collection.router)
+app.include_router(add_doc.router)
+app.include_router(delete_collection.router)
+app.include_router(delete_doc.router)
+app.include_router(download_file.router)
+app.include_router(get_list_collections.router)
+app.include_router(get_lst_doc_in_collection.router)
+app.include_router(add_user_to_collection.router)
 
 
   

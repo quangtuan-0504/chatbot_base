@@ -1,3 +1,4 @@
+from zipfile import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Union, Dict, List
 from pymilvus import DataType, Function, FunctionType
@@ -20,11 +21,17 @@ class Settings(BaseSettings):
         # extra="ignore"
     )
 
+
     app_name: str = "Chatbot Pro"
+    
     MILVUS_TYPE: str = "CLOUD" # "CLOUD" OR LOCAL CONTAINER : "DOCKER"
-    MILVUS_DB: str = "DB_milvus" # IF USE CONTAINER LOCAL , PLEASE SET DB(CLUSTER) NAME
+    MILVUS_DB: str = "VECTORDB_TEST" # IF USE CONTAINER LOCAL , PLEASE SET DB(CLUSTER) NAME
+    MILVUS_ENDPOINT: str = os.getenv("MILVUS_ENDPOINT")
+    MILVUS_TOKEN: str = os.getenv("MILVUS_TOKEN")
 
     MONGO_DB: str = "chatbotbase"
+    MONGO_URL: str = os.getenv("MONGO_URL")
+
     PATH_SAVE_FILE_UPLOAD: str = "./FOLDER_FILE_UPLOAD"
     PATH_SAVE_IMG_OF_FILE: str = "./FOLDER_SAVE_IMG"
 

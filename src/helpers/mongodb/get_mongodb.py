@@ -1,12 +1,6 @@
 import os
 from pymongo import MongoClient
-from dotenv import load_dotenv, find_dotenv
-
 from configs import settings
-
-# Load environment variables
-load_dotenv(find_dotenv())
-
 
 def get_mongodb():
     """
@@ -18,7 +12,7 @@ def get_mongodb():
     Raises:
         ValueError: If MONGO_URL environment variable is not set
     """
-    mongo_url = os.getenv("MONGO_URL")
+    mongo_url = settings.MONGO_URL
     if not mongo_url:
         raise ValueError("MONGO_URL environment variable is required")
     

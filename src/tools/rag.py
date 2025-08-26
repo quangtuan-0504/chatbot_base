@@ -28,8 +28,7 @@ class ChatbotRAGvLLM:
         self.client_embedding_model = client_embedding_model
         self.embedding_model_name = embedding_model_name
         self.milvus_client = milvus_client
-
-    def chat(self, query: str, historyChat  ,collection_name : str | None  = None, file_names : List | None = None) -> str:
+    def chat_stream(self, query: str, history_chat, collection_name : str | None  = None, file_names : List | None = None):
         """
         Chat with the bot
 
@@ -39,70 +38,6 @@ class ChatbotRAGvLLM:
         Returns:
             str: Bot's response
         """
-
-       
-        
-        if collection_name:
-            # query_vector = self.embeddings.embed_query(query)
-            response_emb = self.client_embedding_model.embeddings.create(
-                input=query,
-                model=self.embedding_model_name
-            )
-
-            query_vector = response_emb.data[0].embedding
-
-            total_text_retrieved , lst_file_relevant = vicinity_search(
-                client=self.milvus_client,
-                query_vector=query_vector,
-                collection_name=collection_name,
-                limit=3,
-                file_names=file_names,
-                metric_type='COSINE',
-                upper_bound = 1,
-                lower_bound = 1 
-            )
-            
-            
-            # Xây dựng danh sách messages cho OpenAI API
-            messages = [
-                { "role": "system", "content": PROMPT.format(
-                        query_ = query
-                    )
-                },
-            ]
-            # Thêm thông tin từ RAG vào prompt
-            if total_text_retrieved:
-                messages[0]['content'] += f"\ncontext information : {total_text_retrieved}"
-
-            # Thêm lịch sử chat
-            messages.extend(historyChat)
-
-            # Thêm câu hỏi hiện tại
-            if messages[-1]["role"] == "assistant" or len(messages)==1:
-                messages.append({"role": "user", "content": query})
-
-            # Gửi request đến vLLM : sử dụng một giao diện python do OpenAI cung cấp để tương tác với server
-            response = self.client_chat_model.chat.completions.create(
-                    model= self.chat_model_name,  # Đảm bảo model này đã được chạy trên vLLM
-                    messages=messages,
-                    max_tokens=512,
-                    
-                    temperature=0.1,
-            )
-            return {"answer": response.choices[0].message.content , "source" : lst_file_relevant}
-    def chat_stream(self, query: str, historyChat  ,collection_name : str | None  = None, file_names : List | None = None):
-        """
-        Chat with the bot
-
-        Args:
-            query: User's input question/message
-
-        Returns:
-            str: Bot's response
-        """
-
-       
-        
         if collection_name:
             print("have collection")
             start = time.time()
@@ -140,7 +75,7 @@ class ChatbotRAGvLLM:
                 messages[0]['content'] += f"\ncontext information : {total_text_retrieved}"
 
             # Thêm lịch sử chat
-            messages.extend(historyChat)
+            messages.extend(history_chat)
 
             # Thêm câu hỏi hiện tại
             if messages[-1]["role"] == "assistant" or len(messages)==1:
@@ -171,7 +106,7 @@ class ChatbotRAGvLLM:
                 {"role": "system", "content": "You are a helpful AI assistant.   Based on the conversation between User and assistant. Just answer the last question of User and do nothing else. "}
             ]
             # Thêm lịch sử chat
-            messages.extend(historyChat)
+            messages.extend(history_chat)
             
             # Thêm câu hỏi hiện tại
             if messages[-1]["role"]== "assistant" or len(messages)==1:
@@ -181,7 +116,7 @@ class ChatbotRAGvLLM:
             response = self.client_chat_model.chat.completions.create(
                     model= self.chat_model_name,  # Đảm bảo model này đã được chạy trên vLLM
                     messages=messages,
-                    max_tokens=512,
+                    max_tokens=1024,
                     temperature=0.1,
                     stream= True
             )
@@ -206,7 +141,7 @@ def main():
         if user_input.lower() in ['quit', 'exit', 'bye']:
             break
 
-        response = chatbot.chat(query=user_input, historyChat=[])
+        response = chatbot.chat(query=user_input, history_chat=[])
         print(f"Bot: {response}\n\n")
 
 

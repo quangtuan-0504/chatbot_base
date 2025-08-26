@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, WebSocket ,WebSocketDisconnect
 from bson import ObjectId
-from ..tools.loadResources import resource
+from ..tools.load_resources import resource
 from src.schemas.model_request import request_GetChat, request_Chat , request_AddChat , request_UpdateChat
 from datetime import datetime , timezone
 import json

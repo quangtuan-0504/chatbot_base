@@ -1,21 +1,19 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 import os
-
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__),'..')))
 from loggers.logapp import logger
 from configs import settings
-from helpers.mongoDB.getMongoDB import  get_mongodb
-from helpers.Milvus.milvus import get_milvus_connection
-from config.load_config import config
-from tools.indexingMilvus import  IndexingMilvusOriVLLM
-from tools.retrievalAndGeneration import ChatbotRAGvLLM
+from helpers.mongodb.get_mongodb import  get_mongodb
+from helpers.milvus.milvus import get_milvus_connection
+from tools.indexing_milvus import  IndexingMilvusOriVLLM
+from tools.rag import ChatbotRAGvLLM
 from typing import Dict
 from openai import OpenAI
 
 
-def load_resource()-> dict:
+def load_resource()-> Dict:
     """Load necessary resources (MongoDB, Milvus, and models)."""
     resources = {}
 

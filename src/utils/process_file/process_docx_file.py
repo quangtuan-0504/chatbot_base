@@ -1,5 +1,4 @@
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.document_loaders import Docx2txtLoader, UnstructuredWordDocumentLoader
 from langchain_core.documents import Document
 from docx import Document as DocumentPythonDocx
 
@@ -116,30 +115,3 @@ if __name__ == "__main__":
         print(chunk.page_content)
         print("#############")
     # print(re)
-# def load_docx(
-#         file_path: str ,
-#         collection_name : str ,
-#         mongo_file_id : str = "mongo_file_id",
-#         chunk_size: int = 1000,
-#         chunk_overlap: int = 200
-#     )-> List[Document]:
-
-#     loader = Docx2txtLoader(file_path)
-#     langchain_documents = loader.load()
-            
-
-#     langchain_documents[0].metadata.update({
-#         "source": file_path,
-#         "mongo_file_id" : mongo_file_id,
-#         "collection_name": collection_name,
-#         "file_type" : file_path.split(".")[-1],
-#         "lst_img_of_chunks": []
-#     })
-
-#     text_splitter = RecursiveCharacterTextSplitter(
-#         chunk_size=chunk_size,
-#         chunk_overlap=chunk_overlap
-#     )
-#     langchain_documents_splited = text_splitter.split_documents(langchain_documents)
-
-#     return langchain_documents_splited

@@ -1,7 +1,7 @@
 from fastapi import HTTPException,  Form, APIRouter
 from fastapi.responses import FileResponse
 
-from ..tools.loadResources import resource
+from ..tools.load_resources import resource
 from src.config.load_config import config
 from bson import ObjectId
 from urllib.parse import quote

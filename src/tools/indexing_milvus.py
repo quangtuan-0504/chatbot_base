@@ -15,6 +15,7 @@ from configs import settings
 from pymilvus import connections, db, MilvusClient
 from openai import OpenAI
 import time
+from loggers.logapp import logger
 
 
 
@@ -82,10 +83,10 @@ class IndexingMilvusOriVLLM:
                 schema=schema,
                 index_params=index_params
             )
-            print("Create collection successfully!")
+            logger.info(f"Create collection successfully!")
             return "Create collection successfully!"
         else:
-            print(f"Collection {collection_name} already exists.")
+            logger.warning(f"Collection {collection_name} already exists.")
             return "error"
 
     def add_document(
@@ -109,7 +110,7 @@ class IndexingMilvusOriVLLM:
                         model=self.embedding_model_name_or_path
                     )
                     # print(batch_emb.data[0].embedding)
-                    print(len(batch_emb.data[0].embedding))
+                    logger.info(f"Embedding length: {len(batch_emb.data[0].embedding)}")
                     batch_add = []
                     for emb , doc in zip(batch_emb.data , documents[i:i+batch_size]):
                         batch_add.append({
@@ -130,17 +131,17 @@ class IndexingMilvusOriVLLM:
                         data=batch_add
                     )
 
-                    print(res)
+                    # print(res)
 
 
-                print("successfully")
+                logger.info("Add document successfully")
                 return "successfully"
             else:
-                print("Collection not found")
+                logger.warning("Collection not found")
                 return "Collection not found"
         except Exception as e:
-                print(f"Error adding documents: {str(e)}")
-                return "error"
+            logger.error(f"Error adding documents: {str(e)}")
+            return "error"
 
     def delete_collection(self, collection_name: str):
         try:
@@ -149,7 +150,7 @@ class IndexingMilvusOriVLLM:
                 return "successfully"
             return "collection not found"
         except Exception as e:
-            print(f"Error deleting collection: {str(e)}")
+            logger.error(f"Error deleting collection: {str(e)}")
             return "error"
     def delete_file(self, collection_name: str, file_name: str):
         try:
@@ -160,8 +161,8 @@ class IndexingMilvusOriVLLM:
             )
             return f"successfully delete {res} entities"
         except Exception as e:
-            print(f"Error deleting file: {str(e)}")
-            return "error"       
+            logger.error(f"Error deleting file: {str(e)}")
+            return "error"
 if __name__ == "__main__":
 
     conn = connections.connect(host="10.18.27.59", port=19530)

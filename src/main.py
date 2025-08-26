@@ -5,7 +5,8 @@ import os
 
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__),'..')))
-from tools.load_resources import resourcelifespan
+from src.tools.load_resources import resourcelifespan
+# from tools.load_resources import resourcelifespan # nếu để vậy thì không hiểu sao bên routers/chats.py print resource ra bị rỗng.
 from src.routers import ( 
     chats,
     add_doc,

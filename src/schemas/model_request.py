@@ -5,7 +5,7 @@ from fastapi import FastAPI, HTTPException,Depends, Request,File, Form, UploadFi
 class request_AddChat(BaseModel):
     userId: str
     text: str
-class request_GetChat(BaseModel):
+class requestGetChat(BaseModel):
     userId: str
 class request_GetListChat(BaseModel):
     User_id: str

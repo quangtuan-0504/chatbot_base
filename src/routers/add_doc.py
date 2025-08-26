@@ -12,7 +12,7 @@ router = APIRouter(
 )
 
 @router.post("/add-document/{userId}")
-async def addDocument(userId:str,
+async def add_document(userId:str,
     file: UploadFile = File(...),
     collection_name: str = Form(...),
     collection_id: str = Form(...),

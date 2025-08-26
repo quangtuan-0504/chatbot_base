@@ -121,6 +121,7 @@ async def resourcelifespan(app: FastAPI):
     try:
         resource.update(load_resource())
         logger.info(f"Resources loaded: {list(resource.keys())}")
+        logger.info(f"MongoDB collections: {resource['mongoDB'].list_collection_names()}")
         yield
     finally:
         logger.info("Cleaning up resources...")

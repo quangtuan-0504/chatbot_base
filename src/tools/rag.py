@@ -10,6 +10,7 @@ from openai import OpenAI
 from pymilvus import MilvusClient
 
 from src.utils.searchers import vicinity_search
+from loggers.logapp import logger
 
 
 
@@ -39,9 +40,8 @@ class ChatbotRAGvLLM:
             str: Bot's response
         """
         if collection_name:
-            print("have collection")
+            logger.info(f"have collection")
             start = time.time()
-            # query_vector = self.embeddings.embed_query(query)
             response_emb = self.client_embedding_model.embeddings.create(
                 input=query,
                 model=self.embedding_model_name
@@ -60,9 +60,9 @@ class ChatbotRAGvLLM:
                 upper_bound = 1,
                 lower_bound = 1 
             )
-            print("search time:", time.time()-start)
-            print(total_text_retrieved)
-            
+            logger.info(f"search time: {time.time()-start}")
+            # logger.info(f"Total text retrieved: {total_text_retrieved}")
+
             # Xây dựng danh sách messages cho OpenAI API
             messages = [
                 { "role": "system", "content": PROMPT_GPT.format(
@@ -100,7 +100,7 @@ class ChatbotRAGvLLM:
             yield lst_file_relevant
             yield "[END]"
         else:
-            print("no collection")
+            logger.info(f"no collection")
             
             messages = [
                 {"role": "system", "content": "You are a helpful AI assistant.   Based on the conversation between User and assistant. Just answer the last question of User and do nothing else. "}

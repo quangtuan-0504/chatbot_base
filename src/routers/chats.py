@@ -1,23 +1,25 @@
-from fastapi import APIRouter, Depends, HTTPException, WebSocket ,WebSocketDisconnect
+from fastapi import APIRouter, HTTPException, WebSocket
 from bson import ObjectId
 from ..tools.load_resources import resource
-from src.schemas.model_request import request_GetChat, request_Chat , request_AddChat , request_UpdateChat
+# print("Resource after import:", resource)
+from src.schemas.model_request import requestGetChat
 from datetime import datetime , timezone
 import json
-from openai import OpenAI
-import time
 
 router = APIRouter(
     prefix="/api/chat"
 )
 
 
-@router.get("/listchats/{userId}")
-async def getListChatOfUser(userId):
+@router.get("/list-chats/{userId}")
+async def get_list_chat_of_user(userId):
+    # print(resource)
     db = resource["mongoDB"]
     chat_table = db["chats"]
-    lst_chat = chat_table.find({"userId": userId},{"_id": 1,"title": 1, "createAt": 1 , "updateAt" : 1})
-    print(lst_chat)
+    lst_chat = chat_table.find(
+        {"userId": userId},
+        {"_id": 1,"title": 1, "createAt": 1 , "updateAt" : 1}
+    )
     if not lst_chat:
         return []
     result = [
@@ -35,7 +37,7 @@ async def getListChatOfUser(userId):
 
 
 @router.post("/chat-history/{chatId}")
-async def getChatHistory(chatId: str, request: request_GetChat):
+async def get_chat_history(chatId: str, request: requestGetChat):
     db = resource["mongoDB"]
     userId= request.userId
     chat_table = db["chats"]
@@ -47,11 +49,9 @@ async def getChatHistory(chatId: str, request: request_GetChat):
 
 
 @router.post("/delete-chat/{chatId}")
-async def deleteChat(chatId: str):
+async def delete_chat(chatId: str):
     db = resource["mongoDB"]
     chat_table = db["chats"]
-    # for x in chat_table.find():
-    #     print(x)
     try:
         # Kiểm tra nếu chatId có thể chuyển thành ObjectId
         query = {"_id": ObjectId(chatId)}
@@ -68,7 +68,7 @@ async def deleteChat(chatId: str):
 
 
 @router.websocket("/chat-stream")
-async def streamChatwebsocket(websocket: WebSocket):
+async def stream_chat_websocket(websocket: WebSocket):
     await websocket.accept()
     try:
         # Nhận và kiểm tra dữ liệu từ client
@@ -91,10 +91,10 @@ async def streamChatwebsocket(websocket: WebSocket):
         userId = request["userId"]
         question = request["question"]
         chatId = request.get("chatId")
-        fileNames = request.get("fileNames")
+        file_names = request.get("fileNames")
         collection_name_inVS = request.get("collection_name_inVS")
         llm = request["LLM"]
-        sysMode = request["sysMode"]
+        sys_mode = request["sysMode"]
 
         if not question or not isinstance(question, str):
             await websocket.send_text(json.dumps({"type": "error", "data": "Question is required and must be a string"}))
@@ -106,7 +106,7 @@ async def streamChatwebsocket(websocket: WebSocket):
         print(question)
         print(type(collection_name_inVS))
         print('collection_name_inVS:', collection_name_inVS)
-        print("fileNames:", fileNames)
+        print("file_names:", file_names)
 
         db = resource["mongoDB"]
         chat_table = db['chats']
@@ -143,10 +143,10 @@ async def streamChatwebsocket(websocket: WebSocket):
         gpt4omini = resource["gpt-4o-mini"]
         answer = ""
         source = []
-        if sysMode == "RAG":
+        if sys_mode == "RAG":
             if llm in ["aya-expanse-8b", "gpt-4o-mini"]:
                 collection_name_inVS = f"hello{collection_name_inVS}" if collection_name_inVS else None
-                for response_chunk in gpt4omini.chat_stream(query=question, historyChat=history_chat_processed, collection_name=collection_name_inVS, file_names=fileNames):
+                for response_chunk in gpt4omini.chat_stream(query=question, history_chat=history_chat_processed, collection_name=collection_name_inVS, file_names=file_names):
                     if isinstance(response_chunk, str):
                         if response_chunk != "[END]":
                             answer += response_chunk
@@ -161,9 +161,9 @@ async def streamChatwebsocket(websocket: WebSocket):
                 await websocket.close()
                 raise HTTPException(status_code=400, detail=f"Unsupported LLM: {llm}")
         else:
-            await websocket.send_text(json.dumps({"type": "error", "data": f"Invalid sysMode: {sysMode}"}))
+            await websocket.send_text(json.dumps({"type": "error", "data": f"Invalid sys_mode: {sys_mode}"}))
             await websocket.close()
-            raise HTTPException(status_code=400, detail=f"Invalid sysMode: {sysMode}")
+            raise HTTPException(status_code=400, detail=f"Invalid sys_mode: {sys_mode}")
 
         if chatId is None or chatId == "":
             chat = {

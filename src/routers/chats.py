@@ -88,9 +88,9 @@ async def stream_chat_websocket(websocket: WebSocket):
                 await websocket.close()
                 raise HTTPException(status_code=400, detail=f"Missing or invalid field: {field}")
 
-        userId = request["userId"]
+        user_id = request["userId"]
         question = request["question"]
-        chatId = request.get("chatId")
+        chat_id = request.get("chatId")
         file_names = request.get("fileNames")
         collection_name_inVS = request.get("collection_name_inVS")
         llm = request["LLM"]
@@ -102,7 +102,7 @@ async def stream_chat_websocket(websocket: WebSocket):
             raise HTTPException(status_code=400, detail="Question is required and must be a string")
 
         print("gửi request thành công")
-        print("chatId:", chatId)
+        print("chatId:", chat_id)
         print(question)
         print(type(collection_name_inVS))
         print('collection_name_inVS:', collection_name_inVS)
@@ -111,8 +111,8 @@ async def stream_chat_websocket(websocket: WebSocket):
         db = resource["mongoDB"]
         chat_table = db['chats']
         history_chat_processed = []
-        if chatId:
-            chat = chat_table.find_one({"_id": ObjectId(chatId), "userId": userId})
+        if chat_id:
+            chat = chat_table.find_one({"_id": ObjectId(chat_id), "userId": user_id})
             if not chat:
                 await websocket.send_text(json.dumps({"type": "error", "data": "Chat not found or you don't have permission"}))
                 await websocket.close()
@@ -165,10 +165,10 @@ async def stream_chat_websocket(websocket: WebSocket):
             await websocket.close()
             raise HTTPException(status_code=400, detail=f"Invalid sys_mode: {sys_mode}")
 
-        if chatId is None or chatId == "":
+        if chat_id is None or chat_id == "":
             chat = {
                 "title": question[:40],
-                "userId": userId,
+                "userId": user_id,
                 "createAt": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
                 "updateAt": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
                 "history": [
@@ -176,15 +176,15 @@ async def stream_chat_websocket(websocket: WebSocket):
                     {"role": "assistant", "content": {"answer": answer, "source": source}}
                 ]
             }
-            newChat = chat_table.insert_one(chat)
-            chatId = str(newChat.inserted_id)
+            new_chat = chat_table.insert_one(chat)
+            chat_id = str(new_chat.inserted_id)
         else:
             new_items = []
             if history_chat_processed and history_chat_processed[-1]["role"] == "assistant":
                 new_items.append({"role": "user", "content": question})
             new_items.append({"role": "assistant", "content": {"answer": answer, "source": source}})
             result = chat_table.update_one(
-                {"_id": ObjectId(chatId), "userId": userId},
+                {"_id": ObjectId(chat_id), "userId": user_id},
                 {"$set": {"updateAt": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")}, "$push": {"history": {"$each": new_items}}}
             )
             if result.modified_count == 0:
@@ -192,8 +192,8 @@ async def stream_chat_websocket(websocket: WebSocket):
                 await websocket.close()
                 raise HTTPException(status_code=404, detail="Chat not found or not updated")
 
-        # Gửi chatId đến client
-        await websocket.send_text(json.dumps({"type": "chatId", "data": chatId}))
+        # Gửi chat_id đến client
+        await websocket.send_text(json.dumps({"type": "chatId", "data": chat_id}))
 
         # Đóng kết nối WebSocket
         await websocket.close()

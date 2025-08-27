@@ -1,7 +1,5 @@
-from zipfile import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import Union, Dict, List
-from pymilvus import DataType, Function, FunctionType
+from typing import Dict, List
 from dotenv import load_dotenv
 from dotenv import find_dotenv
 import os

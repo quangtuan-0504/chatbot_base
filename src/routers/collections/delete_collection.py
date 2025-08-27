@@ -16,7 +16,7 @@ router = APIRouter(
 async def deleteCollection(userId: str, collection_id : str = Form(...), collection_name : str = Form(...)):
      
     db = resource["mongoDB"]
-    qdrant_table = db["collection"]
+    collection_milvus_table = db["collection"]
     file_table = db["documents"]
     user_collection_table = db["user_collections"]
 
@@ -29,7 +29,7 @@ async def deleteCollection(userId: str, collection_id : str = Form(...), collect
     print("num access deleted:", user_collection_del.deleted_count)
    
     # xóa collection in VectorStore và bảng collection trong mongoDB 
-    qdrant_table.delete_one({"_id": ObjectId(collection_id)})
+    collection_milvus_table.delete_one({"_id": ObjectId(collection_id)})
     # stt_del = delete_collection_in_qdrant(collection_name=collection_name)
     # print(stt_del)
 

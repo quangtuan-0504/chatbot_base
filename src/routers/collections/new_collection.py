@@ -8,7 +8,9 @@ router = APIRouter(
 )
 
 @router.post("/new-collection/{userId}")
-async def create_collection(userId: str , collection_name: str = Form(...)):
+async def create_collection(userId: str , request: CreateCollectionRequest):
+
+    collection_name = request.collection_name
     db = resource["mongoDB"]
     collection_table = db['collection']
     check_collection_exits = collection_table.find_one({"collection_name": collection_name})

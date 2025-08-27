@@ -5,6 +5,7 @@ from fastapi import File, Form, UploadFile
 class CreateCollectionRequest(BaseModel):
     collection_name: str|None = None
     description: str|None = None
+    status: str|None = "active"
 
 class request_Login(BaseModel):
     userName: str 

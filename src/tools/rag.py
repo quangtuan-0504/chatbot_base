@@ -9,7 +9,7 @@ from typing import List
 from openai import OpenAI
 from pymilvus import MilvusClient
 
-from src.utils.searchers import vicinity_search
+from src.tools.searchers import vicinity_search
 from loggers.logapp import logger
 
 

@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, WebSocket
 from bson import ObjectId
 from ...tools.load_resources import resource
 # print("Resource after import:", resource)
-from src.schemas.model_request import requestGetChat
+from src.data_models.chat_dataclass import requestGetChat
 from datetime import datetime , timezone
 import json
 

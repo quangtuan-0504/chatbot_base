@@ -5,8 +5,6 @@ from fastapi import FastAPI, HTTPException,Depends, Request,File, Form, UploadFi
 class request_AddChat(BaseModel):
     userId: str
     text: str
-class requestGetChat(BaseModel):
-    userId: str
 class request_GetListChat(BaseModel):
     User_id: str
 class request_UpdateChat(BaseModel):
@@ -36,8 +34,7 @@ class request_addDoc(BaseModel):
     file: UploadFile = File(...),
     collection_name: str = Form(...),
     description: str = Form(...)
-class request_getDocs(BaseModel):
-    collection_id : str
+
 class request_addUsertoCollection(BaseModel):
     collection_id : str
     user_email : Union[str, None] = None

@@ -32,3 +32,5 @@ class User(BaseModel):# trong tutorial là nó dùng API của bên thứ 3 đ�
     password: str # mật khẩu
     email: str # email khôi phục
     department: str
+class request_getDocs(BaseModel):
+    collection_id : str

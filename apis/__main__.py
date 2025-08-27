@@ -18,9 +18,9 @@ from src.routers.collections import (
     delete_collection,
     get_list_collections,
     get_lst_doc_in_collection,
-    new_collection,
-    add_user_to_collection
+    new_collection
 )
+from src.routers.shares import add_user_to_collection
 
 from loggers.logapp import logger
 from configs import settings

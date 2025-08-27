@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException , Form
 from ...tools.load_resources import resource
+from src.data_models.collection_dataclass import CreateCollectionRequest
 from datetime import datetime , timezone
 
 router = APIRouter(

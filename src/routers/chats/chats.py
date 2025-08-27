@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, WebSocket
 from bson import ObjectId
 from ...tools.load_resources import resource
 # print("Resource after import:", resource)
-from src.data_models.chat_dataclass import requestGetChat
+from src.data_models.chat_dataclass import GetChatRequest
 from datetime import datetime , timezone
 import json
 
@@ -37,7 +37,7 @@ async def get_list_chat_of_user(userId):
 
 
 @router.post("/chat-history/{chatId}")
-async def get_chat_history(chatId: str, request: requestGetChat):
+async def get_chat_history(chatId: str, request: GetChatRequest):
     db = resource["mongoDB"]
     userId= request.userId
     chat_table = db["chats"]

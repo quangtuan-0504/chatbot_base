@@ -1,5 +1,5 @@
 from fastapi import  APIRouter
-from ..tools.load_resources import resource
+from ...tools.load_resources import resource
 from src.schemas.model_request import request_addUsertoCollection
 
 

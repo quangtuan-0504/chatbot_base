@@ -1,9 +1,9 @@
 from fastapi import HTTPException, File, Form, UploadFile , APIRouter
-from ..tools.load_resources import resource
+from ...tools.load_resources import resource
 from datetime import datetime , timezone
 from fastapi.responses import JSONResponse
 import os
-from ..configs import settings
+from ...configs import settings
 
 
 router = APIRouter(

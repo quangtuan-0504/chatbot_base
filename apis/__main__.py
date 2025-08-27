@@ -4,19 +4,22 @@ import os
 
 
 import sys
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__),'..')))
 from src.tools.load_resources import resourcelifespan
 # from tools.load_resources import resourcelifespan # nếu để vậy thì không hiểu sao bên routers/chats.py print resource ra bị rỗng.
-from src.routers import ( 
-    chats,
+from src.routers.chats import chats
+from src.routers.documents import (
     add_doc,
-    delete_collection,
     delete_doc,
-    download_file,
+    download_file
+)
+from src.routers.collections import ( 
+    delete_collection,
     get_list_collections,
-    add_user_to_collection,
     get_lst_doc_in_collection,
-    new_collection
+    new_collection,
+    add_user_to_collection
 )
 
 from loggers.logapp import logger

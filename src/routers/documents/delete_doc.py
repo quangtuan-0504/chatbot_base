@@ -1,6 +1,6 @@
 from fastapi import Form, APIRouter
-from ..tools.load_resources import resource
-from ..configs import settings
+from ...tools.load_resources import resource
+from ...configs import settings
 from bson import ObjectId
 import shutil
 import os

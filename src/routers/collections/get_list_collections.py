@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException 
 from bson import ObjectId
-from ..tools.load_resources import resource
+from ...tools.load_resources import resource
 
 
 router = APIRouter(

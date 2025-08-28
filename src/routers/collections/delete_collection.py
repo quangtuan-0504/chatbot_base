@@ -9,7 +9,7 @@ import os
 
 
 router = APIRouter(
-    prefix="/api"
+    prefix="/api/collections"
 )
 
 @router.put("/delete-collection/{userId}")

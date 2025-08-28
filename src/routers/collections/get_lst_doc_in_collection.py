@@ -5,7 +5,7 @@ from src.data_models.document_dataclass import request_getDocs
 
 
 router = APIRouter(
-    prefix="/api"
+    prefix="/api/collections"
 )
 @router.post("/get-list-docs-collections/{userId}")
 async def get_documents_of_collection(

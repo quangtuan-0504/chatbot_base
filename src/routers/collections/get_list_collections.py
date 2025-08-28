@@ -4,7 +4,7 @@ from ...tools.load_resources import resource
 
 
 router = APIRouter(
-    prefix="/api"
+    prefix="/api/collections"
 )
 @router.get("/get-list-collections/{userId}")
 async def get_collections_of_user(userId: str):

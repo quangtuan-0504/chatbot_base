@@ -4,7 +4,7 @@ from src.data_models.collection_dataclass import CreateCollectionRequest
 from datetime import datetime , timezone
 
 router = APIRouter(
-    prefix="/api"
+    prefix="/api/collections"
 )
 
 @router.post("/new-collection/{userId}")

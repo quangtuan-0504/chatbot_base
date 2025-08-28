@@ -1,8 +1,8 @@
 import sys
-sys.path.append("")
-# from src.utils.process_file.process_pdf_file import load_pdf
-from src.utils.process_file.process_xlsx_file import load_xlsx
-from src.utils.process_file.process_docx_file import load_docx
+sys.path.append("") # Add the root directory to the Python path D:\NAM_A_BANK\chatbot\chatbot_base
+# from src.tools.document_processing.process_file.process_pdf_file import load_pdf
+from src.tools.document_processing.process_xlsx_file import load_xlsx
+from src.tools.document_processing.process_docx_file import load_docx
 
 
 

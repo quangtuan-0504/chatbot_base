@@ -2,14 +2,14 @@ import sys
 import os
 import time
 sys.path.append(os.path.abspath(os.path.join(
-    os.path.dirname(__file__), '..', '..')))
+    os.path.dirname(__file__), '..', '..'))) # thư mục cha của file hiện tại nhảy ra 2 nấc "src\tools\rag\..\.."
 
-from src.utils.prompts.prompts import PROMPT, PROMPT_GPT
+from tools.rag.prompts import PROMPT, PROMPT_GPT
 from typing import List
 from openai import OpenAI
 from pymilvus import MilvusClient
 
-from src.tools.searchers import vicinity_search
+from tools.rag.searchers import vicinity_search
 from loggers.logapp import logger
 
 

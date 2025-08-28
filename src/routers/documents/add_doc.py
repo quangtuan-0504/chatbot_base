@@ -19,6 +19,7 @@ async def add_document(userId:str,
 ):
     """
     Endpoint để nhận file upload cùng với thông tin bổ sung từ frontend.
+    add metadata của file vô mongodb, lưu file vào đĩa, load file từ đĩa lên xử lý và add vô milvus.
 
     Args:
         file (UploadFile): File được upload từ frontend.

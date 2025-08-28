@@ -7,8 +7,8 @@ from loggers.logapp import logger
 from configs import settings
 from helpers.mongodb.get_mongodb import  get_mongodb
 from helpers.milvus.milvus import get_milvus_connection
-from tools.indexing_milvus import  IndexingMilvusOriVLLM
-from tools.rag import ChatbotRAGvLLM
+from tools.rag.indexing_milvus import  IndexingMilvusOriVLLM
+from tools.rag.rag import ChatbotRAGvLLM
 from typing import Dict
 from openai import OpenAI
 

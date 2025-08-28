@@ -1,6 +1,6 @@
 #indexingMilvus
 import sys
-sys.path.append("")
+sys.path.append("") # Add the root directory to the Python path D:\NAM_A_BANK\chatbot\chatbot_base
 
 import os
 os.environ['CUDA_LAUNCH_BLOCKING']="1"
@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 from pymilvus import DataType
 # Bản pymilvus 2.5.x so với 2.2.x chỉ bổ sung thêm các chức năng mới thuận tiện hơn chứ không xóa các chức năng cũ nha
-from src.utils.get_documents import load_document
+from src.tools.document_processing.get_documents import load_document
 from configs import settings
 from pymilvus import connections, db, MilvusClient
 from openai import OpenAI

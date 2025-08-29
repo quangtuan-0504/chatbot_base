@@ -140,7 +140,7 @@ async def stream_chat_websocket(websocket: WebSocket):
                     "content": content
                 })
 
-        gpt4omini = resource["gpt-4o-mini"]
+        gpt4omini = resource["aya-expanse-8b"]
         answer = ""
         source = []
         if sys_mode == "RAG":

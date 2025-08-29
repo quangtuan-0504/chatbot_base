@@ -21,11 +21,14 @@ class Settings(BaseSettings):
 
 
     app_name: str = "Chatbot Pro"
-    
-    MILVUS_TYPE: str = "CLOUD" # "CLOUD" OR LOCAL CONTAINER : "DOCKER"
+
+    MILVUS_TYPE: str = "DOCKER" # "CLOUD" OR LOCAL CONTAINER : "DOCKER"
     MILVUS_DB: str = "VECTORDB_TEST" # IF USE CONTAINER LOCAL , PLEASE SET DB(CLUSTER) NAME
     MILVUS_ENDPOINT: str = os.getenv("MILVUS_ENDPOINT")
     MILVUS_TOKEN: str = os.getenv("MILVUS_TOKEN")
+    MILVUS_HOST: str = os.getenv("MILVUS_HOST")
+    MILVUS_PORT: str = os.getenv("MILVUS_PORT")
+
 
     MONGO_DB: str = "chatbotbase"
     MONGO_URL: str = os.getenv("MONGO_URL")
@@ -39,30 +42,30 @@ class Settings(BaseSettings):
     openai_api_key: str = os.getenv("OPENAI_API_KEY")
 
     chat_models: List[Dict[str, any]] = [
-        {
-            "name": "gpt-4o-mini",
-            "provider": "openai-api", # "vllm" or "openai-api"
-            "path": "",
-            "base_url": "",
-            "api_key": "",
-        },
         # {
-        #     "name": "aya-expanse-8b",
-        #     "provider": "vllm",
-        #     "path": "/LLM/LLMs/CohereForAI/aya-expanse-8b",
-        #     "base_url": "http://localhost:8000/v1",
-        #     "api_key": os.getenv("VLLM_API_KEY_aya_expanse_8b"),
-        # }
+        #     "name": "gpt-4o-mini",
+        #     "provider": "openai-api", # "vllm" or "openai-api"
+        #     "path": "",
+        #     "base_url": "",
+        #     "api_key": "",
+        # },
+        {
+            "name": "aya-expanse-8b",
+            "provider": "vllm",
+            "path": "/LLM/LLMs/kevinbazira/aya-expanse-8b-awq-4bit",
+            "base_url": "http://localhost:8000/v1",
+            "api_key": os.getenv("VLLM_API_KEY_aya_expanse_8b"),
+        }
     ]
 
     # Configuration for indexing
     embedding_model: Dict[str, any] = {
-        "name": "text-embedding-3-small",
-        "provider": "openai-api",
-        "path": "", #"/LLM/EmbeddingModels/BAAI/bge-m3",
-        "base_url": "",# "http://localhost:8005/v1",
+        "name": "BAAI/bge-m3",
+        "provider": "vllm",
+        "path": "/LLM/EmbeddingModels/BAAI/bge-m3",
+        "base_url": "http://localhost:8001/v1",
         "api_key": "",  # Optional, if using vLLM or other providers
-        "dim": 1536,  # Dimension of the embedding vector
+        "dim": 1024,  # Dimension of the embedding vector
     }
 
     batch_size: int = 500

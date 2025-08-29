@@ -17,10 +17,10 @@ def get_milvus_connection_args():
         }
     else:
         connection_args = {
-            # "host": settings.MILVUS_HOST,
-            # "port":  settings.MILVUS_PORT,
-            "uri": settings.MILVUS_ENDPOINT,
-            "token":  settings.MILVUS_TOKEN,
+            "host": settings.MILVUS_HOST,
+            "port":  settings.MILVUS_PORT,
+            # "uri": settings.MILVUS_ENDPOINT,
+            # "token":  settings.MILVUS_TOKEN,
             "db_name" : settings.MILVUS_DB
         }
 
@@ -29,28 +29,17 @@ def get_milvus_connection_args():
 def create_database_in_milvus():
     if settings.MILVUS_TYPE == 'DOCKER':
         conn = connections.connect( 
-            # "host": settings.MILVUS_HOST,
-            # "port":  settings.MILVUS_PORT,
-            uri = settings.MILVUS_ENDPOINT,
-            token =  settings.MILVUS_TOKEN,
+            host = settings.MILVUS_HOST,
+            port =  settings.MILVUS_PORT,
+            # uri = settings.MILVUS_ENDPOINT,
+            # token =  settings.MILVUS_TOKEN,
         )
         db_name = settings.MILVUS_DB
-        logger.info("connect: ", conn)
-        logger.info("database name: ", db_name)
-        logger.info("list database: ", db.list_database())
-        if db_name not in db.list_database():
-            database = db.create_database(db_name)
-        # OR use this code
-        # client = MilvusClient(
-        #     uri = settings.MILVUS_ENDPOINT,
-        #     token =  settings.MILVUS_TOKEN,
-        # )
-        # db_name = settings.MILVUS_DB
         # logger.info("connect: ", conn)
         # logger.info("database name: ", db_name)
-        # logger.info("list database: ", db.list_database())
-        # if db_name not in client.list_databases():
-        #     client.create_database(db_name)
+        logger.info(f"list database: {db.list_database()}")
+        if db_name not in db.list_database():
+            database = db.create_database(db_name)
 
 def get_milvus_connection():
     """ 
@@ -66,15 +55,10 @@ def get_milvus_connection():
     logger.info(f'Connection milvus arguments: {connnect_args}')
 
     create_database_in_milvus()
-    
+
     client = MilvusClient(
         **connnect_args
     )
-    # if settings.MILVUS_TYPE == 'DOCKER':
-    #     if settings.MILVUS_DB not in client.list_databases():
-    #         client.create_database(settings.MILVUS_DB)
-    #         client.use_database(settings.MILVUS_DB)
-
 
     lst_collections = client.list_collections()
     if lst_collections:
@@ -84,7 +68,6 @@ def get_milvus_connection():
     return client
 
 if __name__ == "__main__":
-    # check_database_in_milvus()
     client = get_milvus_connection()
 
 # kết nối milvus

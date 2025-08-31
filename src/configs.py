@@ -30,8 +30,18 @@ class Settings(BaseSettings):
     MILVUS_PORT: str = os.getenv("MILVUS_PORT")
 
 
-    MONGO_DB: str = "chatbotbase"
     MONGO_URL: str = os.getenv("MONGO_URL")
+    MONGO_DB: str = "chatbotbase"
+    MONGO_COLLECTION: List = [
+        "users",
+        "chats",
+        "collections",
+        "user_collection",
+        "documents",
+        "authorizations",
+        "user_authorization"
+    ]
+ 
 
     PATH_SAVE_FILE_UPLOAD: str = "./FOLDER_FILE_UPLOAD"
     PATH_SAVE_IMG_OF_FILE: str = "./FOLDER_SAVE_IMG"

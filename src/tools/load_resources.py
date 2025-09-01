@@ -5,7 +5,7 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__),'..')))
 from loggers.logapp import logger
 from configs import settings
-from helpers.mongodb.get_mongodb import  get_mongodb
+from helpers.mongodb.get_mongodb import  init_mongo_db
 from helpers.milvus.milvus import get_milvus_connection
 from tools.rag.indexing_milvus import  IndexingMilvusOriVLLM
 from tools.rag.rag import ChatbotRAGvLLM
@@ -19,7 +19,9 @@ def load_resource()-> Dict:
 
     # Load MongoDB
     try:
-        resources["mongoDB"] = get_mongodb()
+        # resources["mongoDB"] = get_mongodb()
+        resources["mongoDB"] = init_mongo_db()
+
         logger.info("MongoDB connection established.")
     except Exception as e:
         logger.error(f"Failed to connect to MongoDB: {str(e)}")

@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException , Form
 from ...tools.load_resources import resource
 from src.data_models.collection_dataclass import CreateCollectionRequest
 from datetime import datetime , timezone
+from ...loggers.logapp import logger
 
 router = APIRouter(
     prefix="/api/collections"
@@ -9,7 +10,7 @@ router = APIRouter(
 
 @router.post("/new-collection/{userId}")
 async def create_collection(userId: str , request: CreateCollectionRequest):
-
+    logger.info(f"Create collection request: {request}")
     collection_name = request.collection_name
     db = resource["mongoDB"]
     collection_table = db['collection']
@@ -28,7 +29,7 @@ async def create_collection(userId: str , request: CreateCollectionRequest):
         # thêm phân quyền collection vừa tạo cho người tạo 
         collection_id=str(collection_new.inserted_id)
         user_collection = db["user_collections"]
-        new_user_collection = user_collection.insert_one({"userId": userId,
+        new_user_collection = user_collection.insert_one({"user_id": userId,
                                                           "collection_id":collection_id })
         # thêm trong qdrant
         indexing = resource["indexing"]

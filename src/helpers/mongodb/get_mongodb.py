@@ -1,34 +1,3 @@
-import os
-from pymongo import MongoClient
-from configs import settings
-
-def get_mongodb():
-    """
-    Establish connection to MongoDB and return database instance.
-    
-    Returns:
-        Database: MongoDB database instance
-        
-    Raises:
-        ValueError: If MONGO_URL environment variable is not set
-    """
-    mongo_url = settings.MONGO_URL
-    if not mongo_url:
-        raise ValueError("MONGO_URL environment variable is required")
-    
-    client = MongoClient(mongo_url)
-    db = client[settings.MONGO_DB]
-    return db
-
-
-if __name__ == "__main__":
-    try:
-        db = get_mongodb()
-        print(f"Connected to database: {db.name}")
-    except Exception as e:
-        print(f"Error connecting to MongoDB: {e}")
-
-
 from configs import settings
 import os
 import sys
@@ -43,15 +12,7 @@ from typing import Optional, ClassVar
 
 @dataclass
 class MongoDBConnections:
-    # Instance variables
-    COLLECTION: Collection
-    DOCUMENT: Collection
-    CHAT_HISTORY: Collection
-    USERS: Collection
-    GROUPS: Collection
-    DATABASE: Database
-
-    # Class variable for singleton instance
+    # Class variable for singleton instance, this is a attribute of this class.
     _instance: ClassVar[Optional['MongoDBConnections']] = None
 
     def __new__(cls, *args, **kwargs):
@@ -63,28 +24,27 @@ class MongoDBConnections:
             # Initialize the connection if this is the first instantiation
             mongo_db = MongoDBConnections.get_mongodb()
 
-            mv_collection = settings.MONGODB_CB_COLLECTION
-            docs = settings.MONGODB_CB_DOCS
-            chat_history = settings.MONGODB_CB_HISTORY
-            groups = settings.MONGODB_CB_GROUPS
-            users = settings.MONGODB_CB_USERS
-
-            # LOGGER.debug(f"MONGO URL: {os.getenv('MONGO_DB_URL')}")
-            logger.debug(f"MONGODB: {settings.MONGO_DB}, collections: {mv_collection}, docs: {docs}, history: {chat_history}, groups: {groups}, users: {users}")
+            logger.debug(f"MONGODB: {settings.MONGO_DB}, collections: {settings.MONGO_COLLECTION}")
 
             # Create instance using super().__new__
             instance = super().__new__(cls)
 
-            # Set up attributes directly
-            instance.COLLECTION = mongo_db[mv_collection]
-            instance.DOCUMENT = mongo_db[docs]
-            instance.CHAT_HISTORY = mongo_db[chat_history]
-            instance.USERS = mongo_db[users]
-            instance.GROUPS = mongo_db[groups]
+            # Dynamically (linh động) create collection attributes from settings
+            for collection_name in settings.MONGO_COLLECTION:
+                setattr(instance, collection_name.upper(), mongo_db[collection_name])
+            
+            # Set database reference
             instance.DATABASE = mongo_db
 
+            # update _instance attribute's value, this time, _instance attribute's value is MongoDBConnections obj with attributes: _instance, DATABASE, and collection attributes
             cls._instance = instance        
         return cls._instance
+        # chạy xong hàm này thì ta đã khởi tạo, đã có một đối tượng với các thuộc tính được thiết lập như những gì đã chạy ở trên.
+        # giả sử ta tạo obj của lớp này lần đầu tiên
+        # giả sử tạo tại obj của lớp này lần 2
+        # khi mình tạo 1 obj thuộc lớp này
+        # mg_db = MongoDBConnections() thì cls._instance được trả về sẽ gán vào obj mg_db.
+
     @staticmethod
     def get_mongodb():
         """

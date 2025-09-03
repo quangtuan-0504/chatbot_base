@@ -7,6 +7,10 @@ from loggers.logapp import logger
 from configs import settings
 from helpers.mongodb.get_mongodb import  init_mongo_db
 from helpers.milvus.milvus import get_milvus_connection
+from tools.intergrations.collection_tools import CollectionTool
+from tools.intergrations.chat_tools import ChatTool
+from tools.intergrations.document_tools import DocumentTool
+
 from tools.rag.indexing_milvus import  IndexingMilvusOriVLLM
 from tools.rag.rag import ChatbotRAGvLLM
 from typing import Dict
@@ -20,7 +24,11 @@ def load_resource()-> Dict:
     # Load MongoDB
     try:
         # resources["mongoDB"] = get_mongodb()
-        resources["mongoDB"] = init_mongo_db()
+        mongodb = init_mongo_db()
+        resources["collection_tool"] = CollectionTool(mongodb=mongodb)
+        resources["document_tool"] = DocumentTool(mongodb=mongodb)
+        resources["chat_tool"] = ChatTool(mongodb=mongodb)
+
 
         logger.info("MongoDB connection established.")
     except Exception as e:
@@ -123,7 +131,6 @@ async def resourcelifespan(app: FastAPI):
     try:
         resource.update(load_resource())
         logger.info(f"Resources loaded: {list(resource.keys())}")
-        logger.info(f"MongoDB collections: {resource['mongoDB'].list_collection_names()}")
         yield
     finally:
         logger.info("Cleaning up resources...")

@@ -12,6 +12,9 @@ from typing import Optional, ClassVar
 
 @dataclass
 class MongoDBConnections:
+    """
+    This class help access database, collection in mongodb quickly.
+    """
     # Class variable for singleton instance, this is a attribute of this class.
     _instance: ClassVar[Optional['MongoDBConnections']] = None
 
@@ -25,7 +28,7 @@ class MongoDBConnections:
             mongo_db = MongoDBConnections.get_mongodb()
 
             logger.debug(f"MONGODB: {settings.MONGO_DB}, collections: {settings.MONGO_COLLECTION}")
-
+            logger.info(f"MongoDB collections: {mongo_db.list_collection_names()}")
             # Create instance using super().__new__
             instance = super().__new__(cls)
 
@@ -68,6 +71,7 @@ class MongoDBConnections:
         """
         No-op init since we handle initialization in __new__
         """
+        # code khởi tạo các cái bảng cố định ở đây, như bảng quyền,...
         pass
 
 def init_mongo_db() -> MongoDBConnections:

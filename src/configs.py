@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     MILVUS_TOKEN: str = os.getenv("MILVUS_TOKEN")
     MILVUS_HOST: str = os.getenv("MILVUS_HOST")
     MILVUS_PORT: str = os.getenv("MILVUS_PORT")
+    PREFIX_COLLECTION_NAME: str = "hello_"
 
 
     MONGO_URL: str = os.getenv("MONGO_URL")

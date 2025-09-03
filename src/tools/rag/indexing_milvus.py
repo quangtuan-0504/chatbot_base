@@ -51,7 +51,7 @@ class IndexingMilvusOriVLLM:
             schema.add_field(field_name="file_name", datatype=DataType.VARCHAR, max_length=65535)
             schema.add_field(field_name="mongo_file_id", datatype=DataType.VARCHAR, max_length=65535)
             schema.add_field(field_name="collection_name", datatype=DataType.VARCHAR, max_length=65535)
-            schema.add_field(field_name="file_type", datatype=DataType.VARCHAR, max_length=65535)
+            # schema.add_field(field_name="file_type", datatype=DataType.VARCHAR, max_length=65535)
             
 
 
@@ -84,10 +84,10 @@ class IndexingMilvusOriVLLM:
                 index_params=index_params
             )
             logger.info(f"Create collection successfully!")
-            return "Create collection successfully!"
+            return "Create collection in Milvus successfully!"
         else:
-            logger.warning(f"Collection {collection_name} already exists.")
-            return "error"
+            logger.warning(f"Collection {collection_name} already exists in Milvus.")
+            raise Exception(f"Error, collection {collection_name} already exists in Milvus.")
 
     def add_document(
         self, 

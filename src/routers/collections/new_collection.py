@@ -7,6 +7,28 @@ from ...loggers.logapp import logger
 router = APIRouter(
     prefix="/api/collections"
 )
+@router.post("/new-collection/{userId}")
+async def create_collection(userId: str , request: CreateCollectionRequest):
+    logger.info(f"Create collection request: {request}")
+
+    try:
+        collection_name = request.collection_name
+        description = request.description
+        status = request.status
+        tags = request.tags
+
+        create_res = resource["collection_tool"].create_collection(
+            indexing_milvus=resource["indexing"],
+            collection_name=collection_name,
+            user_id=userId,
+            status=status,
+            description=description,
+            tags=tags
+        )
+        return create_res
+    except Exception as e:
+        logger.error(f"Failed to create collection: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to create collection")
 
 @router.post("/new-collection/{userId}")
 async def create_collection(userId: str , request: CreateCollectionRequest):

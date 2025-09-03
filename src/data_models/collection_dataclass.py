@@ -6,6 +6,7 @@ class CreateCollectionRequest(BaseModel):
     collection_name: str|None = None
     description: str|None = None
     status: str|None = "active"
+    tags: list[str]|None = None
 
 class request_Login(BaseModel):
     userName: str 

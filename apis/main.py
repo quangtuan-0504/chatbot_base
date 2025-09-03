@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 import os
 
@@ -64,6 +64,14 @@ async def get_department(userId: str):
     lst_depart = ["depart 1","depart 2","depart 3","depart 4","depart 5"]
     return lst_depart
 
+api_router = APIRouter(prefix="/api/v1")
+# Include routers
+api_router.include_router(chat_router, prefix="/chat", tags=["chats"])
+api_router.include_router(collection_router, prefix="/collection", tags=["collections"])
+api_router.include_router(document_router, prefix="/document", tags=["documents"])
+app.include_router(api_router)
+
+ 
 
 app.include_router(chats.router)
 app.include_router(new_collection.router)

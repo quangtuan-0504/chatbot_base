@@ -1,6 +1,6 @@
 import os
 import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__)),'..','..'))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__),'..','..')))
 from helpers.mongodb.get_mongodb import MongoDBConnections
 from tools.rag.indexing_milvus import IndexingMilvusOriVLLM
 from configs import settings

@@ -18,10 +18,12 @@ async def create_collection(userId: str , request: CreateCollectionRequest):
         # Validate required fields for create
         if not request.collection_name:
             return JSONResponse(
-                content=asdict(BaseResponse(
-                    code=400,
-                    message=ResponseMessage.missing_field('collection_name')
-                )),
+                content=asdict(
+                    BaseResponse(
+                        code=400,
+                        message=ResponseMessage.missing_field('collection_name')
+                    )
+                ),
                 status_code=400
             )
         collection_name = request.collection_name

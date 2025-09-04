@@ -30,6 +30,11 @@ class Settings(BaseSettings):
     MILVUS_PORT: str = os.getenv("MILVUS_PORT")
     PREFIX_COLLECTION_NAME: str = "hello_"
 
+    MINIO_ENDPOINT: str = os.getenv("MINIO_ENDPOINT")
+    ACCESS_KEY: str = os.getenv("ACCESS_KEY")
+    SECRET_KEY: str = os.getenv("SECRET_KEY")
+    BUCKET_NAME: str = os.getenv("BUCKET_NAME")
+
 
     MONGO_URL: str = os.getenv("MONGO_URL")
     MONGO_DB: str = "chatbotbase"

@@ -7,6 +7,7 @@ from loggers.logapp import logger
 from configs import settings
 from helpers.mongodb.get_mongodb import  init_mongo_db
 from helpers.milvus.milvus import get_milvus_connection
+from helpers.minio import minio_client
 from tools.intergrations.collection_tools import CollectionTool
 from tools.intergrations.chat_tools import ChatTool
 from tools.intergrations.document_tools import DocumentTool
@@ -33,6 +34,14 @@ def load_resource()-> Dict:
         logger.info("MongoDB connection established.")
     except Exception as e:
         logger.error(f"Failed to connect to MongoDB: {str(e)}")
+        raise
+    
+    # Load Minio
+    try:
+        resources["minio_client"] = minio_client
+        logger.info("Minio connection established.")
+    except Exception as e:
+        logger.error(f"Failed to connect to Minio: {str(e)}")
         raise
 
     # Load Milvus

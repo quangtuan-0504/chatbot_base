@@ -14,6 +14,10 @@ class CreateCollectionRequest(BaseModel):
     status: str|None = "active"
     tags: list[str]|None = None
 
+class RemoveCollectionRequest(BaseModel):
+    collection_id: str = None
+    collection_name: str = None
+    
 class request_Login(BaseModel):
     userName: str 
     password: str 

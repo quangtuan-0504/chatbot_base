@@ -9,6 +9,8 @@ from src.helpers.minio import BUCKET_NAME, minio_client
 from minio.deleteobjects import DeleteObject
 from bson import ObjectId
 from datetime import datetime , timezone
+from src.utils.timezone_utils import get_gmt7_datetime_for_db
+ 
 
 class CollectionTool:
     def __init__(self, mongodb: MongoDBConnections = None):
@@ -22,7 +24,9 @@ class CollectionTool:
         description: str=None,
         tags: list[str]=None
     ):
-        current_time = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        # current_time = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        current_time = get_gmt7_datetime_for_db().isoformat()
+ 
         collection_data = {
             "user_id_create": user_id,
             "collection_name": collection_name,
@@ -210,3 +214,135 @@ class CollectionTool:
             "name": collection.get('name'),
             "user_id": collection.get('user_id')
         }
+    def collection_exists(self, collection_id: str):
+        """
+        Check if a collection exists by its ID
+
+        Args:
+            collection_id (str): The ID of the collection to check
+
+        Returns:
+            bool: True if the collection exists, False otherwise
+        """
+        if collection_id.startswith(settings.PREFIX_COLLECTION_NAME):
+            collection_id = collection_id[len(settings.PREFIX_COLLECTION_NAME):]
+
+        try:
+            # Convert string ID to ObjectId
+            collection = self.mongodb.COLLECTIONS.find_one(
+                {'_id': ObjectId(collection_id)})
+            return collection is not None
+        except Exception as e:
+            logger.error(f"Error checking collection existence: {str(e)}")
+            return False
+    def increment_document_count(self, collection_id: str):
+        """
+        Increment the document count for a collection by 1
+        """
+        try:
+            if collection_id.startswith(settings.PREFIX_COLLECTION_NAME):
+                collection_id = collection_id[len(settings.PREFIX_COLLECTION_NAME):]
+
+
+            current_time = get_gmt7_datetime_for_db().isoformat()
+            result = self.mongodb.COLLECTIONS.update_one(
+                {'_id': ObjectId(collection_id)},
+                {
+                    '$inc': {'document_count': 1},
+                    '$set': {'updated_at': current_time}
+                }
+            )
+
+            if result.matched_count == 0:
+                logger.warning(f"Collection {collection_id} not found when incrementing document count")
+                return False
+
+            logger.debug(f"Incremented document count for collection {collection_id}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Error incrementing document count: {str(e)}")
+            return False
+    def decrement_document_count(self, collection_id: str):
+        """
+        Decrement the document count for a collection by 1
+        """
+        try:
+            if collection_id.startswith("ai_"):
+                collection_id = collection_id[3:]
+
+            current_time = get_gmt7_datetime_for_db().isoformat()
+            result = self.mongodb.COLLECTION.update_one(
+                {'_id': ObjectId(collection_id)},
+                {
+                    '$inc': {'document_count': -1},
+                    '$set': {'updated_at': current_time}
+                }
+            )
+
+            if result.matched_count == 0:
+                LOGGER.warning(f"Collection {collection_id} not found when decrementing document count")
+                return False
+
+            LOGGER.debug(f"Decremented document count for collection {collection_id}")
+            return True
+
+        except Exception as e:
+            LOGGER.error(f"Error decrementing document count: {str(e)}")
+            return False
+
+    def increment_collection_size(self, collection_id: str, size_bytes: int):
+        """
+        Increment the total size of a collection by the specified number of bytes
+        """
+        try:
+            if collection_id.startswith("ai_"):
+                collection_id = collection_id[3:]
+
+            current_time = get_gmt7_datetime_for_db().isoformat()
+            result = self.mongodb.COLLECTION.update_one(
+                {'_id': ObjectId(collection_id)},
+                {
+                    '$inc': {'total_size_bytes': size_bytes},
+                    '$set': {'updated_at': current_time}
+                }
+            )
+
+            if result.matched_count == 0:
+                LOGGER.warning(f"Collection {collection_id} not found when incrementing size")
+                return False
+
+            LOGGER.debug(f"Incremented collection size by {size_bytes} bytes for collection {collection_id}")
+            return True
+
+        except Exception as e:
+            LOGGER.error(f"Error incrementing collection size: {str(e)}")
+            return False
+
+    def decrement_collection_size(self, collection_id: str, size_bytes: int):
+        """
+        Decrement the total size of a collection by the specified number of bytes
+        """
+        try:
+            if collection_id.startswith("ai_"):
+                collection_id = collection_id[3:]
+
+            current_time = get_gmt7_datetime_for_db().isoformat()
+            result = self.mongodb.COLLECTION.update_one(
+                {'_id': ObjectId(collection_id)},
+                {
+                    '$inc': {'total_size_bytes': -size_bytes},
+                    '$set': {'updated_at': current_time}
+                }
+            )
+
+            if result.matched_count == 0:
+                LOGGER.warning(f"Collection {collection_id} not found when decrementing size")
+                return False
+
+            LOGGER.debug(f"Decremented collection size by {size_bytes} bytes for collection {collection_id}")
+            return True
+
+        except Exception as e:
+            LOGGER.error(f"Error decrementing collection size: {str(e)}")
+            return False

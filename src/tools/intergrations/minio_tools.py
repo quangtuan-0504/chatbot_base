@@ -26,6 +26,7 @@ def ensure_bucket_exists(minio_client: Minio, bucket_name: str):
             logger.info(f"Bucket '{bucket_name}' exists.")
     except S3Error as err:
         logger.error(f"Error creating bucket: {err}")
+        raise
 
 def get_file_from_minio(minio_client: Minio, bucket_name: str ,object_name: str, return_type: str = "BytesIO"):
     """

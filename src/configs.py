@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     ACCESS_KEY: str = os.getenv("ACCESS_KEY")
     SECRET_KEY: str = os.getenv("SECRET_KEY")
     BUCKET_NAME: str = os.getenv("BUCKET_NAME")
+    UPLOAD_FOLDER: str = "resources/documents"
 
 
     MONGO_URL: str = os.getenv("MONGO_URL")

@@ -1,10 +1,7 @@
-from langchain_community.document_loaders import PyPDFLoader, Docx2txtLoader, TextLoader, UnstructuredWordDocumentLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
 import time
 from src.helpers.milvus import Vectorstores
 from src.document_loaders.documents import load_document
 from src.utils import logSetup
-from src.helpers.minio import download_file_from_minio, get_file_from_minio
 import tempfile
 import os
 LOGGER = logSetup()

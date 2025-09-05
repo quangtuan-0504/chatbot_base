@@ -1,20 +1,19 @@
 # processor.py - Worker service to process files from the queue
 import time
 import os
-from dotenv import load_dotenv
-load_dotenv()
-import logging
-from pymongo import MongoClient, ASCENDING
-import time 
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__))))
+from dotenv import load_dotenv, find_dotenv
+load_dotenv(find_dotenv())
+from pymongo import ASCENDING
 import threading
-from bson.objectid import ObjectId
 from .document_process import process_file
-from src.helpers.mongodb import MongoDBConnections
-from src.utils import logSetup
+from src.helpers.mongodb.get_mongodb import MongoDBConnections
 from src.helpers.milvus import Vectorstores
-logger = logSetup(logname="document")
+from src.loggers.logapp import logger
+from src.tools.rag.indexing_milvus import IndexingMilvusOriVLLM
 mongodb = MongoDBConnections()
-files_collection = mongodb.DOCUMENT
+files_collection = mongodb.DOCUMENTS
 # Create index for faster queries
 files_collection.create_index([("status", ASCENDING), ("created_at", ASCENDING), ("collectionId", ASCENDING) ])
 vectorstores = Vectorstores()

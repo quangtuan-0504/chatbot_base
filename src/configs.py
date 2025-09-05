@@ -35,6 +35,11 @@ class Settings(BaseSettings):
     SECRET_KEY: str = os.getenv("SECRET_KEY")
     BUCKET_NAME: str = os.getenv("BUCKET_NAME")
     UPLOAD_FOLDER: str = "resources/documents"
+    DOCUMENT_IMAGES: str = "resources/images"
+
+    MARKER_PDF_URL: str = "10.18.27.59:8060"
+
+ 
 
 
     MONGO_URL: str = os.getenv("MONGO_URL")
@@ -88,7 +93,7 @@ class Settings(BaseSettings):
     batch_size: int = 500
     nprobe: int = 10
     limit_per_qr: int = 50
-    nlist: int = 128  # Number of clusters for IVF index
+    nlist: int = 512  # Number of clusters for IVF index
 
     def __init__(self):
         super().__init__()

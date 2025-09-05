@@ -2,21 +2,77 @@
 import time
 import os
 import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__))))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__),'..','..')))
 from dotenv import load_dotenv, find_dotenv
 load_dotenv(find_dotenv())
 from pymongo import ASCENDING
 import threading
-from .document_process import process_file
+from openai import OpenAI
+
+from src.tools.document_processing.document_process import process_file
 from src.helpers.mongodb.get_mongodb import MongoDBConnections
-from src.helpers.milvus import Vectorstores
+from src.helpers.milvus.milvus import get_milvus_connection
+from src.helpers.minio import minio_client
 from src.loggers.logapp import logger
 from src.tools.rag.indexing_milvus import IndexingMilvusOriVLLM
+from src.configs import settings
+
+
+
+
 mongodb = MongoDBConnections()
 files_collection = mongodb.DOCUMENTS
 # Create index for faster queries
-files_collection.create_index([("status", ASCENDING), ("created_at", ASCENDING), ("collectionId", ASCENDING) ])
-vectorstores = Vectorstores()
+files_collection.create_index([("status", ASCENDING), ("created_at", ASCENDING), ("collection_id", ASCENDING) ])
+
+# Load Milvus
+try:
+    milvus_client = get_milvus_connection()
+    logger.info("Milvus connection established.")
+except Exception as e:
+    logger.error(f"Failed to connect to Milvus: {str(e)}")
+    raise
+
+
+# Get client openai-api
+if any(model["provider"] == "openai-api" for model in settings.chat_models + [settings.embedding_model]):
+    openai_client = OpenAI(
+        api_key=settings.openai_api_key,
+    )
+else:
+    openai_client = None
+    logger.warning("No use model from openAI, some features may not work.")
+
+# Load client embedding model
+embedding_model = settings.embedding_model
+try:
+    if embedding_model["provider"] == "openai-api":
+        openai_emb_client = openai_client
+        embedding_model_name_or_path = embedding_model["name"]
+    elif embedding_model["provider"] == "vllm":
+        openai_emb_client = OpenAI(
+            api_key=embedding_model["api_key"],
+            base_url=embedding_model["base_url"],
+        )
+        embedding_model_name_or_path = embedding_model["path"]
+    else:
+        raise ValueError(f"Unsupported embedding model provider: {embedding_model['provider']}")
+
+    if embedding_model['provider'] in ["openai-api", "vllm"]:
+        indexing = IndexingMilvusOriVLLM(
+            milvus_client = milvus_client,
+            openai_client = openai_emb_client,
+            embedding_model_name_or_path = embedding_model_name_or_path,
+        )
+    elif embedding_model['provider'] == "huggingface-transformers":
+        # indexing = IndexingMilvus(...)
+        pass  # Placeholder for Hugging Face Transformers indexing
+        logger.info("IndexingMilvusOriVLLM loaded.")
+except Exception as e:
+    logger.error(f"Failed to initialize IndexingMilvusOriVLLM: {str(e)}")
+    raise
+
+
 # Configuration
 MAX_PROCESSING_TIME = 300  # seconds
 MAX_RETRY_ATTEMPTS = 3
@@ -63,7 +119,7 @@ def worker_thread():
                 process_file(
                     file_data = pending_file,
                     files_collection = files_collection,
-                    vectorstores = vectorstores
+                    indexing = indexing
                 )
             else:
                 # No files to process, sleep before checking again

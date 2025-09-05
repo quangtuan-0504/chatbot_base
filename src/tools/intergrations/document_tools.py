@@ -23,8 +23,8 @@ class DocumentTool:
 
     def create_file(
             self, 
-            original_filename: str,
-            stored_filename: str, 
+            original_file_name: str,
+            minio_stored_file_name: str, 
             file_path: str,
             user_id: str, 
             collection_id: str, 
@@ -36,8 +36,8 @@ class DocumentTool:
         """
         current_time = get_gmt7_datetime_for_db()        
         file_record = {
-            'file_name': original_filename,
-            'stored_filename': stored_filename,
+            'file_name': original_file_name,
+            'minio_stored_file_name': minio_stored_file_name,
             'file_path': file_path,
             'user_id': user_id,
             'collection_id': collection_id,

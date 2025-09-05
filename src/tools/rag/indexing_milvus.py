@@ -32,7 +32,18 @@ class IndexingMilvusOriVLLM:
         self.embedding_model_name_or_path = embedding_model_name_or_path
 
     def create_collection(self, collection_name: str):
+        """The collection name in Milvus is collection id in MongoDB
+        Because Milvus require collection name must be start with alphabet, 
+        So, we need to add prefix in front of the collection id
+        Args:
+            collection_name (str): prefix + collection id in mongodb
 
+        Raises:
+            Exception: _description_
+
+        Returns:
+            _type_: _description_
+        """
         res = self.client_vector_store.list_collections()
         if collection_name not in res:
             # Create schema
@@ -49,10 +60,11 @@ class IndexingMilvusOriVLLM:
             schema.add_field(field_name="chunk_index_in_file", datatype=DataType.INT16)
             schema.add_field(field_name="source", datatype=DataType.VARCHAR, max_length=65535)
             schema.add_field(field_name="file_name", datatype=DataType.VARCHAR, max_length=65535)
-            schema.add_field(field_name="mongo_file_id", datatype=DataType.VARCHAR, max_length=65535)
-            schema.add_field(field_name="collection_name", datatype=DataType.VARCHAR, max_length=65535)
+            schema.add_field(field_name="file_id", datatype=DataType.VARCHAR, max_length=65535)
+            # schema.add_field(field_name="collection_name", datatype=DataType.VARCHAR, max_length=65535)
+            # schema.add_field(field_name="page", datatype=DataType.INT64)
             # schema.add_field(field_name="file_type", datatype=DataType.VARCHAR, max_length=65535)
-            
+
 
 
             # Prepare index parameters
@@ -91,15 +103,29 @@ class IndexingMilvusOriVLLM:
 
     def add_document(
         self, 
-        path_file: str | None,
-        collection_name: str,
-        mongo_document_id : str = "mongo_doc_id" ,
-        batch_size=50 
+        file_path: str,
+        collection_id: str,
+        file_id: str,
+        file_name: str,
+        batch_size: int = 50
     ):
         try:
-            if self.client_vector_store.has_collection(collection_name=collection_name):
-        
-                documents = load_document(filepath=path_file, collection_name=collection_name , mongo_file_id=mongo_document_id )
+            if self.client_vector_store.has_collection(collection_name=settings.PREFIX_COLLECTION_NAME + collection_id):
+
+                documents = load_document(
+                    file_path= file_path,
+                    file_id= file_id,
+                    collection_id= collection_id
+
+                )
+                # Add file_id to metadata for each document
+                for doc in documents: 
+                    if not hasattr(doc, 'metadata'):
+                        doc.metadata = {}
+                    doc.metadata['file_id'] = file_id
+                    doc.metadata['file_name'] = file_name
+                    doc.metadata['source'] = file_path
+
                 # list document langchain object 
                 texts = [doc.page_content for doc in documents]
                 for i in tqdm(range(0, len(documents), batch_size), desc="Load data to vector store"):
@@ -120,14 +146,13 @@ class IndexingMilvusOriVLLM:
                             "chunk_index_in_file" : doc.metadata['chunk_index_in_file'], 
                             "source" : doc.metadata['source'], 
                             "file_name" : doc.metadata['file_name'],
-                            "mongo_file_id" : doc.metadata['mongo_file_id'], 
-                            "collection_name" : doc.metadata['collection_name'], 
-                            "file_type" : doc.metadata['file_type']
+                            "file_id" : doc.metadata['file_id'], 
+                            # "collection_name" : doc.metadata['collection_name'], 
                         })
-                  
+
 
                     res = self.client_vector_store.insert(
-                        collection_name=collection_name,
+                        collection_name=settings.PREFIX_COLLECTION_NAME + collection_id,
                         data=batch_add
                     )
 
@@ -135,13 +160,13 @@ class IndexingMilvusOriVLLM:
 
 
                 logger.info("Add document successfully")
-                return "successfully"
+                return len(texts)
             else:
                 logger.warning("Collection not found")
-                return "Collection not found"
+                raise "Collection not found"
         except Exception as e:
             logger.error(f"Error adding documents: {str(e)}")
-            return "error"
+            raise f"Error adding documents: {str(e)}"
 
     def delete_collection(self, collection_name: str):
         try:

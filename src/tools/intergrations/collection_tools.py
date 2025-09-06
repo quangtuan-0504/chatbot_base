@@ -106,25 +106,28 @@ class CollectionTool:
             logger.error(f"Failed to create collection: {str(e)}")
             raise
 
-    def remove_collection(self, collection_id):
+    def remove_collection(self, 
+        indexing_milvus: IndexingMilvusOriVLLM,
+        collection_id: str
+        ) -> dict:
         """
         Remove a collection and its associated Milvus collection
         """
         # Remove 'ai_' prefix if present
-        if collection_id.startswith("ai_"):
-            collection_id = collection_id[3:]
+        if collection_id.startswith(settings.PREFIX_COLLECTION_NAME):
+            collection_id = collection_id[len(settings.PREFIX_COLLECTION_NAME):]
 
         # Find and validate collection exists
-        collection = self.mongodb.COLLECTION.find_one(
+        collection = self.mongodb.COLLECTIONS.find_one(
             {'_id': ObjectId(collection_id)})
         if not collection:
             raise ValueError("Collection not found")
 
         # Remove Milvus collection
-        remove_milvus_collection("ai_" + collection_id)
+        indexing_milvus.delete_collection(settings.PREFIX_COLLECTION_NAME + collection_id)
 
         # Remove metadata from MongoDB
-        del_collection = self.mongodb.COLLECTION.delete_one(
+        del_collection = self.mongodb.COLLECTIONS.delete_one(
             {'_id': ObjectId(collection_id)}
         )
         if del_collection.deleted_count != 1:

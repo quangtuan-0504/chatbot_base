@@ -8,18 +8,9 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__),'..')))
 from src.tools.load_resources import resourcelifespan
 # from tools.load_resources import resourcelifespan # nếu để vậy thì không hiểu sao bên routers/chats.py print resource ra bị rỗng.
-from src.routers.chats import chats
-from src.routers.documents import (
-    add_doc,
-    delete_doc,
-    download_file
-)
-from src.routers.collections import ( 
-    delete_collection,
-    get_list_collections,
-    get_lst_doc_in_collection,
-    new_collection
-)
+from src.routers.chats import router as chat_router
+from src.routers.documents import router as document_router
+from src.routers.collections import router as collection_router
 from src.routers.shares import add_user_to_collection
 
 from loggers.logapp import logger
@@ -65,22 +56,12 @@ async def get_department(userId: str):
     return lst_depart
 
 api_router = APIRouter(prefix="/api/v1")
-# Include routers
-api_router.include_router(chat_router, prefix="/chat", tags=["chats"])
-api_router.include_router(collection_router, prefix="/collection", tags=["collections"])
-api_router.include_router(document_router, prefix="/document", tags=["documents"])
 app.include_router(api_router)
+# Include routers
+api_router.include_router(chat_router, prefix="/chats", tags=["chats"])
+api_router.include_router(collection_router, prefix="/collections", tags=["collections"])
+api_router.include_router(document_router, prefix="/documents", tags=["documents"])
 
- 
-
-app.include_router(chats.router)
-app.include_router(new_collection.router)
-app.include_router(add_doc.router)
-app.include_router(delete_collection.router)
-app.include_router(delete_doc.router)
-app.include_router(download_file.router)
-app.include_router(get_list_collections.router)
-app.include_router(get_lst_doc_in_collection.router)
 app.include_router(add_user_to_collection.router)
 
 

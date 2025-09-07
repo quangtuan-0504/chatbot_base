@@ -1,14 +1,12 @@
 from fastapi import APIRouter, HTTPException, WebSocket
 from bson import ObjectId
-from ...tools.load_resources import resource
+from ..tools.load_resources import resource
 # print("Resource after import:", resource)
 from src.data_models.chat_dataclass import GetChatRequest
 from datetime import datetime , timezone
 import json
 
-router = APIRouter(
-    prefix="/api/chat"
-)
+router = APIRouter()
 
 
 @router.get("/list-chats/{userId}")

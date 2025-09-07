@@ -2,17 +2,16 @@ from fastapi import HTTPException, File, Form, UploadFile , APIRouter
 from datetime import datetime , timezone
 from fastapi.responses import JSONResponse
 from typing import Optional
+from urllib.parse import quote
 from dataclasses import asdict
 import os
 import uuid
-from ...tools.load_resources import resource
-from ...configs import settings
-from ...loggers.logapp import logger
-from ...data_models import *
+from ..tools.load_resources import resource
+from ..configs import settings
+from ..loggers.logapp import logger
+from ..data_models import *
 
-router = APIRouter(
-    prefix="/api"
-)
+router = APIRouter()
 
 @router.post("/add-document/{userId}")
 async def add_document(userId:str,
@@ -110,3 +109,62 @@ async def add_document(userId:str,
             )),
             status_code=500
         )
+    
+
+@router.put("/delete-file/{userId}")
+async def deleteDoc(userId: str, collection_id: str = Form(...),file_id : str = Form(...),file_path : str = Form(...), file_name : str = Form(...)):
+
+    db = resource["mongoDB"]
+    file_table = db["documents"]
+    # 1. Xóa cả trong thư mục lưu trữ file
+    if os.path.exists(file_path):
+        os.remove(file_path)
+
+    # 2. Xóa trong mongoDB
+    file_table.delete_one({"_id": ObjectId(file_id)})
+
+    # 3. Xóa trong VectorStore
+    # stt = delete_file_in_collection_qdrant(file_name=file_name)
+    # print(stt)
+    ############
+    indexing = resource["indexing"]
+    stt = indexing.delete_file(collection_name="hello" + collection_id, file_name=file_name)
+    print(stt)
+
+    # 4. Xóa các ảnh liên quan đến file
+    if os.path.exists(f"{settings.PATH_SAVE_IMG_OF_FILE}/hello{collection_id}/{file_name}"):
+        os.remove(f"{settings.PATH_SAVE_IMG_OF_FILE}/hello{collection_id}/{file_name}")
+    return {"collection_id": collection_id, "file_id": file_id}
+
+@router.post('/download-file/{userId}')
+async def downloadFile(userId : str,collection_id: str = Form(...),file_id : str = Form(...)):
+
+    db = resource["mongoDB"]
+    doc_collection = db["documents"]
+
+    # Tìm tài liệu trong cơ sở dữ liệu
+    doc = doc_collection.find_one({"_id": ObjectId(file_id), "collection_id": collection_id})
+
+    if not doc:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    file_path = doc["path"]
+
+    try:
+        # Lấy tên file từ đường dẫn
+        file_name = file_path.split("/")[-1]
+
+        # Mã hóa tên file để hỗ trợ Unicode
+        encoded_file_name = quote(file_name)
+
+        # Trả về file với tên gốc và định dạng đúng
+        return FileResponse(
+            path=file_path,
+            media_type="application/octet-stream",
+            filename=file_name,
+            headers={"Content-Disposition": f"attachment; filename*=UTF-8''{encoded_file_name}"}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+

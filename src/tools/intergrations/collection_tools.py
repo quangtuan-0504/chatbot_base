@@ -5,10 +5,9 @@ from helpers.mongodb.get_mongodb import MongoDBConnections
 from tools.rag.indexing_milvus import IndexingMilvusOriVLLM
 from configs import settings
 from loggers.logapp import logger
-from src.helpers.minio import BUCKET_NAME, minio_client
+from src.helpers.minio import minio_client
 from minio.deleteobjects import DeleteObject
 from bson import ObjectId
-from datetime import datetime , timezone
 from src.utils.timezone_utils import get_gmt7_datetime_for_db
  
 
@@ -173,7 +172,7 @@ class CollectionTool:
             # Tạo danh sách các DeleteObject để xóa
             delete_objects_file = [DeleteObject(obj.object_name) for obj in objects_file]
             deleted_error_objects_file = minio_client.remove_objects( # return list object deleted error
-                bucket_name = BUCKET_NAME,
+                bucket_name = settings.BUCKET_NAME,
                 delete_object_list = delete_objects_file
             )
             error_delete_file_count = 0

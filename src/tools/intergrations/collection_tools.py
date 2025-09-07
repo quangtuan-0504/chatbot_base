@@ -54,7 +54,7 @@ class CollectionTool:
                 collection_id = str(collection_new.inserted_id)
                 logger.debug(f"Collection created: {collection_id}")
                 # thêm phân quyền collection vừa tạo cho người tạo
-                new_user_collection = self.mongodb.USER_COLLECTIONS.insert_one(
+                new_user_collection = self.mongodb.USER_COLLECTION.insert_one(
                     {
                         "user_id": user_id,
                         "collection_id": collection_id,
@@ -89,7 +89,7 @@ class CollectionTool:
                             f"Removing MongoDB record {collection_id} due to Milvus collection creation failure")
                         self.mongodb.COLLECTIONS.delete_one(
                             {"_id": collection_new.inserted_id})
-                        self.mongodb.USER_COLLECTIONS.delete_one(
+                        self.mongodb.USER_COLLECTION.delete_one(
                             {"_id": new_user_collection.inserted_id})
                         logger.info(
                             f"Successfully removed MongoDB record {collection_id}")
@@ -108,12 +108,16 @@ class CollectionTool:
 
     def remove_collection(self, 
         indexing_milvus: IndexingMilvusOriVLLM,
-        collection_id: str
-        ) -> dict:
+        collection_id: str,
+        user_id: str,
+        role: str = "owner"
+    ) -> dict:
         """
         Remove a collection and its associated Milvus collection
+        if owner, delete all, delete in milvus, mongodb collection, document, user_collection , minio files
+        if shared person , just remove in user_collection mongoDB
         """
-        # Remove 'ai_' prefix if present
+        # Remove prefix if present
         if collection_id.startswith(settings.PREFIX_COLLECTION_NAME):
             collection_id = collection_id[len(settings.PREFIX_COLLECTION_NAME):]
 
@@ -121,101 +125,112 @@ class CollectionTool:
         collection = self.mongodb.COLLECTIONS.find_one(
             {'_id': ObjectId(collection_id)})
         if not collection:
-            raise ValueError("Collection not found")
+            raise ValueError("Collection not found in MongoDB")
+        if role == 'owner':
+            # Remove Milvus collection
+            try:
+                indexing_milvus.delete_collection(settings.PREFIX_COLLECTION_NAME + collection_id)
+            except Exception as e:
+                raise RuntimeError(f"Failed to delete Milvus collection: {str(e)}")
 
-        # Remove Milvus collection
-        indexing_milvus.delete_collection(settings.PREFIX_COLLECTION_NAME + collection_id)
+            # Remove metadata from MongoDB
+            del_collection = self.mongodb.COLLECTIONS.delete_one(
+                {'_id': ObjectId(collection_id)}
+            )
+            del_documents = self.mongodb.DOCUMENTS.delete_many(
+                {'collection_id': collection_id}
+            )
+            del_user_collection = self.mongodb.USER_COLLECTION.delete_many(
+                {'collection_id': collection_id}
+            )
+            if del_collection.deleted_count != 1: # only remove one collection
+                raise RuntimeError("Failed to delete collection metadata")
+            logger.info(f"num file deleted: {del_documents.deleted_count}")
+            logger.info(f"num user collection deleted: {del_user_collection.deleted_count}")
 
-        # Remove metadata from MongoDB
-        del_collection = self.mongodb.COLLECTIONS.delete_one(
-            {'_id': ObjectId(collection_id)}
-        )
-        if del_collection.deleted_count != 1:
-            raise RuntimeError("Failed to delete collection metadata")
-        del_document = self.mongodb.DOCUMENT.delete_many(
-            {'collection_id': collection_id}
-        )
-        print("num file deleted:", del_document.deleted_count)
+            # Remove files from Minio
+            # Check bucket is exist
+            if not minio_client.bucket_exists(settings.BUCKET_NAME):
+                logger.info(f"Bucket {settings.BUCKET_NAME} doesn't exits")
+                raise ValueError("Bucket not found")
 
+            # Remove list files of collection in minio
+            FOLDER_SAVE_FILE = settings.UPLOAD_FOLDER
+            path_to_folder_save_file_of_collection = os.path.join(
+                FOLDER_SAVE_FILE,
+                collection_id
+            )
+            # Đảm bảo folder_path kết thúc bằng '/' để tìm tất cả object trong thư mục
+            if not path_to_folder_save_file_of_collection.endswith('/'):
+                path_to_folder_save_file_of_collection += '/'
 
+            # Lấy danh sách tất cả object trong thư mục
+            objects_file = minio_client.list_objects(
+                bucket_name=settings.BUCKET_NAME,
+                prefix=path_to_folder_save_file_of_collection,
+                recursive=True
+            )
+            # Tạo danh sách các DeleteObject để xóa
+            delete_objects_file = [DeleteObject(obj.object_name) for obj in objects_file]
+            deleted_error_objects_file = minio_client.remove_objects( # return list object deleted error
+                bucket_name = BUCKET_NAME,
+                delete_object_list = delete_objects_file
+            )
+            error_delete_file_count = 0
+            for error in deleted_error_objects_file:
+                logger.error(f"Lỗi khi xóa {error.object_name}: {error.message}")
+                error_delete_file_count += 1
 
+            if error_delete_file_count == 0:
+                logger.error(f"Đã xóa {len(delete_objects_file)} file khỏi bucket {settings.BUCKET_NAME}")
+            else:
+                logger.error(f"Có {error_delete_file_count} lỗi, xóa được {len(delete_objects_file) - error_delete_file_count} file")
 
-        # Check bugket is exist
-        if not minio_client.bucket_exists(BUCKET_NAME):
-            print(f"Bucket {BUCKET_NAME} không tồn tại")
-            raise ValueError("Bucket not found")
+            # Remove folder image of collection in minio
+            FOLDER_SAVE_IMG = settings.DOCUMENT_IMAGES
+            path_to_folder_save_img_of_collection = os.path.join(
+                FOLDER_SAVE_IMG,
+                collection_id
+            )
+            # Đảm bảo folder_path kết thúc bằng '/' để tìm tất cả object trong thư mục
+            if not path_to_folder_save_img_of_collection.endswith('/'):
+                path_to_folder_save_img_of_collection += '/'
 
-        # Remove list files of collection in minio
-        FOLDER_SAVE_FILE = os.getenv("DOCUMENT_FOLDER")
-        path_to_folder_save_file_of_collection = os.path.join(
-            FOLDER_SAVE_FILE,
-            collection_id
-        )
-        # Đảm bảo folder_path kết thúc bằng '/' để tìm tất cả object trong thư mục
-        if not path_to_folder_save_file_of_collection.endswith('/'):
-            path_to_folder_save_file_of_collection += '/'
+            # Lấy danh sách tất cả object trong thư mục
+            objects_img = minio_client.list_objects(
+                bucket_name=settings.BUCKET_NAME,
+                prefix=path_to_folder_save_img_of_collection,
+                recursive=True
+            )
+            # Tạo danh sách các DeleteObject để xóa
+            delete_objects_img = [DeleteObject(obj.object_name) for obj in objects_img]
+            deleted_error_objects_img = minio_client.remove_objects(
+                bucket_name=settings.BUCKET_NAME,
+                delete_object_list=delete_objects_img
+            )
+            error_delete_img_count = 0
+            for error in deleted_error_objects_img:
+                logger.error(f"Lỗi khi xóa {error.object_name}: {error.message}")
+                error_delete_img_count += 1
 
-        # Lấy danh sách tất cả object trong thư mục
-        objects_file = minio_client.list_objects(
-            BUCKET_NAME,
-            prefix = path_to_folder_save_file_of_collection,
-            recursive=True
-        )
-        # Tạo danh sách các DeleteObject để xóa
-        delete_objects_file = [DeleteObject(obj.object_name) for obj in objects_file]
-        deleted_error_objects_file = minio_client.remove_objects( # return list object deleted error
-            bucket_name = BUCKET_NAME,
-            delete_object_list = delete_objects_file
-        )
-        error_delete_file_count = 0
-        for error in deleted_error_objects_file:
-            print(f"Lỗi khi xóa {error.object_name}: {error.message}")
-            error_delete_file_count += 1
+            if error_delete_img_count == 0:
+                logger.error(f"Đã xóa {len(delete_objects_img)} img khỏi bucket {settings.BUCKET_NAME}")
+            else:
+                logger.error(f"Có {error_delete_img_count} lỗi, xóa được {len(delete_objects_img) - error_delete_img_count} file")
 
-        if error_delete_file_count == 0:
-            print(f"Đã xóa {len(delete_objects_file)} file khỏi bucket {BUCKET_NAME}")
-        else:
-            print(f"Có {error_delete_file_count} lỗi, xóa được {len(delete_objects_file) - error_delete_file_count} file")
-
-        # Remove folder image of collection in minio
-        FOLDER_SAVE_IMG = os.getenv("DOCUMENT_IMAGES")
-        path_to_folder_save_img_of_collection = os.path.join(
-            FOLDER_SAVE_IMG,
-            collection_id
-        )
-        # Đảm bảo folder_path kết thúc bằng '/' để tìm tất cả object trong thư mục
-        if not path_to_folder_save_img_of_collection.endswith('/'):
-            path_to_folder_save_img_of_collection += '/'
-
-        # Lấy danh sách tất cả object trong thư mục
-        objects_img = minio_client.list_objects(
-            bucket_name=BUCKET_NAME,
-            prefix=path_to_folder_save_img_of_collection,
-            recursive=True
-        )
-        # Tạo danh sách các DeleteObject để xóa
-        delete_objects_img = [DeleteObject(obj.object_name) for obj in objects_img]
-        deleted_error_objects_img = minio_client.remove_objects(
-            bucket_name=BUCKET_NAME,
-            delete_object_list=delete_objects_img
-        )
-        error_delete_img_count = 0
-        for error in deleted_error_objects_img:
-            print(f"Lỗi khi xóa {error.object_name}: {error.message}")
-            error_delete_img_count += 1
-
-        if error_delete_img_count == 0:
-            print(f"Đã xóa {len(delete_objects_img)} img khỏi bucket {BUCKET_NAME}")
-        else:
-            print(f"Có {error_delete_img_count} lỗi, xóa được {len(delete_objects_img) - error_delete_img_count} file")
-
-        print(f"Thực hiện xóa file list image của collection khỏi bucket {BUCKET_NAME}")
-
+            logger.error(f"Thực hiện xóa file list image của collection khỏi bucket {settings.BUCKET_NAME}")
+        elif role in ['editer', 'viewer']:
+            # chỉ xóa trong bảng user collection của mongoDB
+            del_user_collection = self.mongodb.USER_COLLECTION.delete_one(
+                {'user_id': user_id, 'collection_id': collection_id}
+            )
+            logger.info(f"num user collection deleted: {del_user_collection.deleted_count}")
 
         return {
             "id": collection_id,
-            "name": collection.get('name'),
-            "user_id": collection.get('user_id')
+            "collection_name": collection.get('collection_name'),
+            "user_id": user_id,
+            "role": role,
         }
     def collection_exists(self, collection_id: str):
         """

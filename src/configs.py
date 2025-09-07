@@ -34,8 +34,8 @@ class Settings(BaseSettings):
     ACCESS_KEY: str = os.getenv("ACCESS_KEY")
     SECRET_KEY: str = os.getenv("SECRET_KEY")
     BUCKET_NAME: str = os.getenv("BUCKET_NAME")
-    UPLOAD_FOLDER: str = "resources/documents"
-    DOCUMENT_IMAGES: str = "resources/images"
+    UPLOAD_FOLDER: str = "resources/documents" # folder in bucket to save file upload
+    DOCUMENT_IMAGES: str = "resources/images" # folder in bucket to save images of file
 
     MARKER_PDF_URL: str = "10.18.27.59:8060"
 

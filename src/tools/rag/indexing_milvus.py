@@ -173,10 +173,11 @@ class IndexingMilvusOriVLLM:
             if self.client_vector_store.has_collection(collection_name=collection_name):
                 self.client_vector_store.drop_collection(collection_name=collection_name)
                 return "successfully"
-            return "collection not found"
+            else:
+                raise ValueError("Collection not found")
         except Exception as e:
             logger.error(f"Error deleting collection: {str(e)}")
-            return "error"
+            raise ValueError(f"Error deleting collection: {str(e)}")
     def delete_file(self, collection_name: str, file_name: str):
         try:
             res = self.client_vector_store.delete(

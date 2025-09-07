@@ -16,7 +16,7 @@ class CreateCollectionRequest(BaseModel):
 
 class RemoveCollectionRequest(BaseModel):
     collection_id: str = None
-    collection_name: str = None
+    collection_name: str|None = None
     
 class request_Login(BaseModel):
     userName: str 
@@ -40,6 +40,7 @@ class CollectionItem:
     collection_id: str
     collection_name: str
     user_id: str  # Creator of the collection (remains unchanged)
+    role: str  # Role of the user in relation to the collection (owner, editor, viewer)
     status: str
     created_at: str
     updated_at: str
@@ -77,6 +78,7 @@ class CollectionItem:
             collection_id=str(collection_dict.get('_id', collection_dict.get('id', ''))),
             collection_name=collection_dict.get('collection_name', ''),
             user_id=str(collection_dict.get('user_id', '')),
+            role=collection_dict.get('role', 'owner'),
             status=collection_dict.get('status', 'active'),
             created_at=format_timestamp(collection_dict.get('created_at')),
             updated_at=format_timestamp(collection_dict.get('updated_at')),

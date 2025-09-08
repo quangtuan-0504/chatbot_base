@@ -53,7 +53,114 @@ async def create_collection(userId: str , request: CreateCollectionRequest):
             )),
             status_code=500
         )
+    
+@router.post('/modify')
+async def modify_collection(
+    request: ModifyCollectionRequest,
+):
+    """Modify an existing collection. Can change name and/or group assignment."""
+    logger.debug(f"Modify collection request: {request}")
+    try:
+        if not request:
+            return JSONResponse(
+                content=asdict(BaseResponse(
+                    code=400,
+                    message=ResponseMessage.missing_field('request data')
+                )),
+                status_code=400
+            )
 
+        if not request.collection_id:
+            return JSONResponse(
+                content=asdict(BaseResponse(
+                    code=400,
+                    message=ResponseMessage.missing_field('collection_id')
+                )),
+                status_code=400
+            )
+
+        response_data = None
+
+        # Handle collection name change
+        if request.collection_name:
+            try:
+                response_data = collection_service.change_collection_name(
+                    collection_id=request.collection_id,
+                    collection_name=request.collection_name
+                )
+                logger.info(f"Collection name changed: {request.collection_id} -> {request.collection_name}")
+            except ValueError as ve:
+                return JSONResponse(
+                    content=asdict(BaseResponse(
+                        code=404,
+                        message=str(ve)
+                    )),
+                    status_code=404
+                )
+
+        # Handle group assignment change - only admins can change group assignments
+        if request.group_id is not None:
+            user_role = current_user.get("role")
+
+            # Check if user is admin
+            if user_role != UserRole.ADMIN.value:
+                return JSONResponse(
+                    content=asdict(BaseResponse(
+                        code=403,
+                        message="Only administrators can change collection group assignments"
+                    )),
+                    status_code=403
+                )
+
+            try:
+                from src.tools.group_service import GroupService
+                group_service = GroupService()
+
+                if request.group_id:  # If not empty string, assign to new group
+                    # This will automatically remove from existing groups first
+                    group_service.add_collection_to_group(request.group_id, request.collection_id)
+                    LOGGER.info(f"Collection {request.collection_id} assigned to group {request.group_id} by admin {current_user['username']}")
+                else:
+                    # Remove from all groups (set to no group)
+                    group_service.remove_collection_from_all_groups(request.collection_id)
+                    LOGGER.info(f"Collection {request.collection_id} removed from all groups by admin {current_user['username']}")
+
+            except Exception as group_error:
+                LOGGER.warning(f"Group assignment change failed: {str(group_error)}")
+                # Continue execution even if group assignment fails
+
+        # Get updated collection data if no name change occurred
+        if not response_data:
+            try:
+                response_data = collection_service.get_collection_by_id(request.collection_id)
+            except ValueError as ve:
+                return JSONResponse(
+                    content=asdict(BaseResponse(
+                        code=404,
+                        message=str(ve)
+                    )),
+                    status_code=404
+                )
+
+        collection_item = CollectionItem.from_dict(response_data)
+
+        return asdict(CollectionResponse(
+            code=200,
+            data=collection_item,
+            message=ResponseMessage.UPDATE_SUCCESS
+        ))
+
+    except GroupPermissionError:
+        raise
+    except Exception as e:
+        LOGGER.error(f"Modify collection error: {str(e)}")
+        return JSONResponse(
+            content=asdict(BaseResponse(
+                code=500,
+                message=ResponseMessage.error_occurred(e)
+            )),
+            status_code=500
+        )
 
 @router.put("/delete-collection/{userId}")
 async def deleteCollection(userId: str, request: RemoveCollectionRequest):

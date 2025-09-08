@@ -13,11 +13,12 @@ class CreateCollectionRequest(BaseModel):
     description: str|None = None
     status: str|None = "active"
     tags: list[str]|None = None
-
 class RemoveCollectionRequest(BaseModel):
     collection_id: str = None
     collection_name: str|None = None
-    
+class ModifyCollectionRequest(BaseModel):
+    collection_id: str
+    collection_name: Optional[str] = None
 class request_Login(BaseModel):
     userName: str 
     password: str 

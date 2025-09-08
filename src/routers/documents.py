@@ -109,10 +109,48 @@ async def add_document(userId:str,
             )),
             status_code=500
         )
-    
+@router.post("/get-list-docs-collection/{userId}")
+async def get_documents_of_collection(
+    userId: str , 
+    request : FilesQueryRequest
+):  
+    try:
+        if not request.collection_id:
+            return JSONResponse(
+                content=asdict(BaseResponse(
+                    code=400,
+                    message=ResponseMessage.missing_field('collection_id')
+                )),
+                status_code=400
+            )
+
+        files_data = resource['document_tool'].get_files_of_collection(
+            query=request
+        )
+        file_items = [FileItem.from_dict(file).asdict() for file in files_data]
+        if not file_items:
+            file_items = []
+
+        response = FileListResponse(
+            code=200,
+            data=file_items,
+            total=len(file_items)
+        )
+
+        return asdict(response)
+
+    except Exception as e:
+        logger.error(f"Get files error: {str(e)}")
+        return JSONResponse(
+            content=asdict(BaseResponse(
+                code=500,
+                message=ResponseMessage.error_occurred(e)
+            )),
+            status_code=500
+        )
 
 @router.put("/delete-file/{userId}")
-async def deleteDoc(userId: str, collection_id: str = Form(...),file_id : str = Form(...),file_path : str = Form(...), file_name : str = Form(...)):
+async def delete_file(userId: str, collection_id: str = Form(...),file_id : str = Form(...),file_path : str = Form(...), file_name : str = Form(...)):
 
     db = resource["mongoDB"]
     file_table = db["documents"]

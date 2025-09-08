@@ -4,13 +4,11 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__),'..','..'
 from helpers.mongodb.get_mongodb import MongoDBConnections
 from src.utils.timezone_utils import get_gmt7_datetime_for_db
 from typing import List, Dict, Any, Optional
-from data_models.document_dataclass import FileSearchRequest
-from src.helpers.milvus import remove_milvus_document
-from src.helpers.minio import BUCKET_NAME , minio_client
+from data_models.document_dataclass import FilesQueryRequest
+from src.helpers.minio import minio_client
 from bson import ObjectId
-from src.utils import logSetup
 from minio.deleteobjects import DeleteObject
-LOGGER = logSetup()
+
 
 class DocumentTool:
     def __init__(self, mongodb: MongoDBConnections = None):
@@ -66,42 +64,40 @@ class DocumentTool:
         del file_record['_id']
         return file_record
 
-    def get_files(self, search_request: FileSearchRequest) -> List[Dict[str, Any]]:
+    def get_files_of_collection(self, 
+        query: FilesQueryRequest
+    ) -> List[Dict[str, Any]]:
         """
         Get files matching the search criteria
         """
-        query = {}
 
-        if search_request.user_id:
-            query['user_id'] = search_request.user_id
 
-        if search_request.collection_id:
-            query['collection_id'] = search_request.collection_id
+        # Xây dựng query filter
+        filters = {"collection_id": query.collection_id}
 
-        if search_request.file_type:
-            query['file_type'] = search_request.file_type
+        # Thêm các filter tùy chọn
+        if query.file_types:
+            filters["file_type"] = {"$in": query.file_types}
 
-        if search_request.status:
-            query['status'] = search_request.status
+        if query.status:
+            filters["status"] = {"$in": query.status}
 
-        # Date range queries
-        date_query = {}
-        if search_request.created_after:
-            date_query['$gte'] = search_request.created_after
+        # Filter theo khoảng thời gian updated_at
+        if query.created_after or query.created_before:
+            filters["updated_at"] = {}
+            if query.created_after:
+                filters["updated_at"]["$gte"] = query.created_after
+            if query.created_before:
+                filters["updated_at"]["$lte"] = query.created_before
 
-        if search_request.created_before:
-            date_query['$lte'] = search_request.created_before
-
-        if date_query:
-            query['created_at'] = date_query
-
-        files = list(self.documents_collection.find(query).sort('created_at', -1))
+        # Truy vấn MongoDB
+        cursor = self.mongodb.DOCUMENTS.find(filters).sort('updated_at', -1)  
+        files = list(cursor)
         # LOGGER.debug(str(files))
         # Add the _id as file_id in each record
         for file in files:
             file['file_id'] = str(file['_id'])
             del file['_id']
-
         return files
 
     def update_file_status(self, user_id: str, status: str) -> Optional[Dict[str, Any]]:

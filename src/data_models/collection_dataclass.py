@@ -19,6 +19,9 @@ class RemoveCollectionRequest(BaseModel):
 class ModifyCollectionRequest(BaseModel):
     collection_id: str
     collection_name: Optional[str] = None
+class GetCollectionsRequest(BaseModel):
+    roles: List|None = None
+ 
 class request_Login(BaseModel):
     userName: str 
     password: str 

@@ -38,8 +38,16 @@ class User(BaseModel):# trong tutorial là nó dùng API của bên thứ 3 đ�
     password: str # mật khẩu
     email: str # email khôi phục
     department: str
-class request_getDocs(BaseModel):
-    collection_id : str
+
+# Pydantic model for request validation
+class FilesQueryRequest(BaseModel):
+    collection_id: str
+    file_types: Optional[List[str]] = None
+    status: Optional[List[str]] = None
+    created_after: Optional[datetime] = None
+    created_before: Optional[datetime] = None
+
+ 
 
 @dataclass
 class FileItem:

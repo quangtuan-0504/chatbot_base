@@ -104,7 +104,69 @@ class CollectionTool:
         except Exception as e:
             logger.error(f"Failed to create collection: {str(e)}")
             raise
+    def get_collection_by_id(self, collection_id):
+        """
+        Get a single collection by its ID
+        """
+        try:
+            # Find the collection by ID
+            collection = self.mongodb.COLLECTIONS.find_one(
+                {'_id': ObjectId(collection_id)}
+            )
 
+            if not collection:
+                raise ValueError(f"Collection with ID {collection_id} not found")
+
+            # Transform the ObjectId to string for JSON serialization
+            collection['id'] = str(collection['_id'])
+            del collection['_id']
+            return collection
+
+        except Exception as e:
+            logger.error(f"Error getting collection by ID: {str(e)}")
+            raise Exception(f"Failed to retrieve collection: {str(e)}")
+
+    def change_collection_name(self, collection_id, collection_name):
+        """
+        Change the name of a collection by its ID
+        """
+        try:
+            # Find and validate collection exists
+            existing_collection = self.mongodb.COLLECTIONS.find_one(
+                {'_id': ObjectId(collection_id)})
+            if not existing_collection:
+                raise ValueError(
+                    f"Collection with ID {collection_id} not found")
+
+            # Update the collection name and updated_at timestamp
+            current_time = get_gmt7_datetime_for_db().isoformat()
+            result = self.mongodb.COLLECTIONS.update_one(
+                {'_id': ObjectId(collection_id)},
+                {'$set': {
+                    'collection_name': collection_name,
+                    'updated_at': current_time
+                }}
+            )
+
+            if result.modified_count != 1:
+                raise RuntimeError("Failed to update collection name")
+
+            return {
+                "id": collection_id,
+                "collection_name": collection_name,
+                "user_id": existing_collection.get('user_id'),
+                "status": existing_collection.get('status'),
+                "created_at": existing_collection.get('created_at'),
+                "updated_at": current_time,
+                "document_count": existing_collection.get('document_count', 0),
+                "total_size_bytes": existing_collection.get('total_size_bytes', 0),
+                "description": existing_collection.get('description'),
+                "tags": existing_collection.get('tags', [])
+            }
+
+        except Exception as e:
+            logger.error(f"Error changing collection name: {str(e)}")
+            raise Exception(f"Failed to change collection name: {str(e)}")
     def remove_collection(self, 
         indexing_milvus: IndexingMilvusOriVLLM,
         collection_id: str,
@@ -231,6 +293,27 @@ class CollectionTool:
             "user_id": user_id,
             "role": role,
         }
+
+    def get_collections_by_userid(self,
+        user_id: str,
+        roles: list|None
+    ):
+        if roles:
+            lst_collection_of_user = self.mongodb.USER_COLLECTION.find({
+                "user_id": user_id,
+                "role": {"$in": roles}
+            })
+        elif not roles:
+            lst_collection_of_user = self.mongodb.USER_COLLECTION.find({"user_id":user_id})
+        if lst_collection_of_user:
+            lst=[]
+            for collection in lst_collection_of_user:
+                re = self.mongodb.COLLECTIONS.find_one({"_id": ObjectId(collection["collection_id"])})
+                lst.append(re)
+            return lst
+        else:
+            return []
+ 
     def collection_exists(self, collection_id: str):
         """
         Check if a collection exists by its ID
@@ -298,14 +381,14 @@ class CollectionTool:
             )
 
             if result.matched_count == 0:
-                LOGGER.warning(f"Collection {collection_id} not found when decrementing document count")
+                logger.warning(f"Collection {collection_id} not found when decrementing document count")
                 return False
 
-            LOGGER.debug(f"Decremented document count for collection {collection_id}")
+            logger.debug(f"Decremented document count for collection {collection_id}")
             return True
 
         except Exception as e:
-            LOGGER.error(f"Error decrementing document count: {str(e)}")
+            logger.error(f"Error decrementing document count: {str(e)}")
             return False
 
     def increment_collection_size(self, collection_id: str, size_bytes: int):
@@ -313,11 +396,11 @@ class CollectionTool:
         Increment the total size of a collection by the specified number of bytes
         """
         try:
-            if collection_id.startswith("ai_"):
-                collection_id = collection_id[3:]
+            if collection_id.startswith(settings.PREFIX_COLLECTION_NAME):
+                collection_id = collection_id[len(settings.PREFIX_COLLECTION_NAME):]
 
             current_time = get_gmt7_datetime_for_db().isoformat()
-            result = self.mongodb.COLLECTION.update_one(
+            result = self.mongodb.COLLECTIONS.update_one(
                 {'_id': ObjectId(collection_id)},
                 {
                     '$inc': {'total_size_bytes': size_bytes},
@@ -326,14 +409,14 @@ class CollectionTool:
             )
 
             if result.matched_count == 0:
-                LOGGER.warning(f"Collection {collection_id} not found when incrementing size")
+                logger.warning(f"Collection {collection_id} not found when incrementing size")
                 return False
 
-            LOGGER.debug(f"Incremented collection size by {size_bytes} bytes for collection {collection_id}")
+            logger.debug(f"Incremented collection size by {size_bytes} bytes for collection {collection_id}")
             return True
 
         except Exception as e:
-            LOGGER.error(f"Error incrementing collection size: {str(e)}")
+            logger.error(f"Error incrementing collection size: {str(e)}")
             return False
 
     def decrement_collection_size(self, collection_id: str, size_bytes: int):
@@ -341,11 +424,11 @@ class CollectionTool:
         Decrement the total size of a collection by the specified number of bytes
         """
         try:
-            if collection_id.startswith("ai_"):
-                collection_id = collection_id[3:]
+            if collection_id.startswith(settings.PREFIX_COLLECTION_NAME):
+                collection_id = collection_id[len(settings.PREFIX_COLLECTION_NAME):]
 
             current_time = get_gmt7_datetime_for_db().isoformat()
-            result = self.mongodb.COLLECTION.update_one(
+            result = self.mongodb.COLLECTIONS.update_one(
                 {'_id': ObjectId(collection_id)},
                 {
                     '$inc': {'total_size_bytes': -size_bytes},
@@ -354,12 +437,12 @@ class CollectionTool:
             )
 
             if result.matched_count == 0:
-                LOGGER.warning(f"Collection {collection_id} not found when decrementing size")
+                logger.warning(f"Collection {collection_id} not found when decrementing size")
                 return False
 
-            LOGGER.debug(f"Decremented collection size by {size_bytes} bytes for collection {collection_id}")
+            logger.debug(f"Decremented collection size by {size_bytes} bytes for collection {collection_id}")
             return True
 
         except Exception as e:
-            LOGGER.error(f"Error decrementing collection size: {str(e)}")
+            logger.error(f"Error decrementing collection size: {str(e)}")
             return False

@@ -84,55 +84,11 @@ async def modify_collection(
         # Handle collection name change
         if request.collection_name:
             try:
-                response_data = collection_service.change_collection_name(
+                response_data = resource['collection_tool'].change_collection_name(
                     collection_id=request.collection_id,
                     collection_name=request.collection_name
                 )
                 logger.info(f"Collection name changed: {request.collection_id} -> {request.collection_name}")
-            except ValueError as ve:
-                return JSONResponse(
-                    content=asdict(BaseResponse(
-                        code=404,
-                        message=str(ve)
-                    )),
-                    status_code=404
-                )
-
-        # Handle group assignment change - only admins can change group assignments
-        if request.group_id is not None:
-            user_role = current_user.get("role")
-
-            # Check if user is admin
-            if user_role != UserRole.ADMIN.value:
-                return JSONResponse(
-                    content=asdict(BaseResponse(
-                        code=403,
-                        message="Only administrators can change collection group assignments"
-                    )),
-                    status_code=403
-                )
-
-            try:
-                from src.tools.group_service import GroupService
-                group_service = GroupService()
-
-                if request.group_id:  # If not empty string, assign to new group
-                    # This will automatically remove from existing groups first
-                    group_service.add_collection_to_group(request.group_id, request.collection_id)
-                    LOGGER.info(f"Collection {request.collection_id} assigned to group {request.group_id} by admin {current_user['username']}")
-                else:
-                    # Remove from all groups (set to no group)
-                    group_service.remove_collection_from_all_groups(request.collection_id)
-                    LOGGER.info(f"Collection {request.collection_id} removed from all groups by admin {current_user['username']}")
-
-            except Exception as group_error:
-                LOGGER.warning(f"Group assignment change failed: {str(group_error)}")
-                # Continue execution even if group assignment fails
-
-        # Get updated collection data if no name change occurred
-        if not response_data:
-            try:
-                response_data = collection_service.get_collection_by_id(request.collection_id)
             except ValueError as ve:
                 return JSONResponse(
                     content=asdict(BaseResponse(
@@ -149,11 +105,8 @@ async def modify_collection(
             data=collection_item,
             message=ResponseMessage.UPDATE_SUCCESS
         ))
-
-    except GroupPermissionError:
-        raise
     except Exception as e:
-        LOGGER.error(f"Modify collection error: {str(e)}")
+        logger.error(f"Modify collection error: {str(e)}")
         return JSONResponse(
             content=asdict(BaseResponse(
                 code=500,
@@ -163,7 +116,7 @@ async def modify_collection(
         )
 
 @router.put("/delete-collection/{userId}")
-async def deleteCollection(userId: str, request: RemoveCollectionRequest):
+async def delete_collection(userId: str, request: RemoveCollectionRequest):
     logger.info(f"Delete collection request: {request}")
     try: 
         if not request.collection_id:
@@ -209,44 +162,31 @@ async def deleteCollection(userId: str, request: RemoveCollectionRequest):
             )),
             status_code=500
         )
-    
 
 @router.get("/get-list-collections/{userId}")
-async def get_collections_of_user(userId: str):
-    print(userId)
-    db = resource["mongoDB"]
-    milvus_collection_table = db["collection"]
-    user_collection_table = db["user_collections"]
-    lst_collection = user_collection_table.find({"userId" :userId})
+async def get_collections_of_user(userId: str, request: GetCollectionsRequest):
+    logger.debug(f"Get all collections for user:{userId}")
+    try:
 
-    if lst_collection :
-        lst=[]
-        for collection in lst_collection:
-            re = milvus_collection_table.find_one({"_id": ObjectId(collection["collection_id"])})
+        collections_data = resource['collection_tool'].get_collections_by_userid(
+            user_id=userId,
+            roles=request.roles
+        )
 
-            lst.append({"collection_id": collection["collection_id"],
-                        "collection_name": re["collection_name"]})
-            
-        return lst
-    else:
-        return []
+        collection_items = [CollectionItem.from_dict(collection) for collection in collections_data]
+        response = CollectionListResponse(
+            data=collection_items,
+            total=len(collection_items)
+        )
 
-@router.post("/get-list-docs-collections/{userId}")
-async def get_documents_of_collection(
-    userId: str , 
-    request : request_getDocs
-):
-    collection_id = request.collection_id
+        return asdict(response)
 
-    db = resource["mongoDB"]
-
-    doc_collection = db["documents"]
-    lst_doc = []
-    for doc in doc_collection.find({"collection_id": collection_id}):
-        lst_doc.append({"doc_id": str(doc["_id"]),
-                        "file_name": doc["file_name"],
-                        "description": doc["description"],
-                        "path": doc["path"],
-                        "size" : doc["size"],
-                        "type": doc["type"]})
-    return lst_doc
+    except Exception as e:
+        logger.error(f"Get all collections error for user: {str(e)}")
+        return JSONResponse(
+            content=asdict(BaseResponse(
+                code=500,
+                message=ResponseMessage.error_occurred(e)
+            )),
+            status_code=500
+        )

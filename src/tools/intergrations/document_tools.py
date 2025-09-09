@@ -2,7 +2,10 @@ import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__),'..','..')))
 from helpers.mongodb.get_mongodb import MongoDBConnections
+from tools.rag.indexing_milvus import IndexingMilvusOriVLLM
 from src.utils.timezone_utils import get_gmt7_datetime_for_db
+from configs import settings
+from loggers.logapp import logger
 from typing import List, Dict, Any, Optional
 from data_models.document_dataclass import FilesQueryRequest
 from src.helpers.minio import minio_client
@@ -130,7 +133,7 @@ class DocumentTool:
         )
 
         return self.get_file(user_id)
-    def remove_file(self, file_id: str, collection_id: str) -> Optional[Dict[str, Any]]:
+    def remove_file(self, file_id: str, collection_id: str, indexing_milvus: IndexingMilvusOriVLLM) -> Optional[Dict[str, Any]]:
         """
         Remove a file and its record
         """
@@ -147,25 +150,18 @@ class DocumentTool:
 
         # Delete file from disk
         file_path = file_record.get('file_path')
-        print('file_path:', file_path)
-        # if file_path and os.path.exists(file_path):
         if file_path:
             try:
-                # os.remove(file_path)
                 # Check bugket is exist
-                if not minio_client.bucket_exists(BUCKET_NAME):
-                    print(f"Bucket {BUCKET_NAME} không tồn tại")
-                    return
+                if not minio_client.bucket_exists(settings.BUCKET_NAME):
+                    raise ValueError(f"Bucket {settings.BUCKET_NAME} không tồn tại")
                 # Delete file in minIO
-                # print('file_path:', file_path)
                 minio_client.remove_object(
-                    bucket_name=BUCKET_NAME,
+                    bucket_name=settings.BUCKET_NAME,
                     object_name=file_path
                 )
-                # print(f"Đã xóa file {file_path} khỏi bucket {BUCKET_NAME}")
-
                 # Delete images of file in minIO
-                FOLDER_SAVE_IMG = os.getenv("DOCUMENT_IMAGES")
+                FOLDER_SAVE_IMG = settings.DOCUMENT_IMAGES
                 path_to_folder_save_img_of_file = os.path.join(
                     FOLDER_SAVE_IMG,
                     collection_id,
@@ -175,41 +171,41 @@ class DocumentTool:
                 # Đảm bảo folder_path kết thúc bằng '/' để tìm tất cả object trong thư mục
                 if not path_to_folder_save_img_of_file.endswith('/'):
                     path_to_folder_save_img_of_file += '/'
-                # print('path_to_folder_save_img_of_file:',path_to_folder_save_img_of_file)
                 # Lấy danh sách tất cả object trong thư mục
                 objects = minio_client.list_objects(
-                    bucket_name=BUCKET_NAME,
+                    bucket_name=settings.BUCKET_NAME,
                     prefix=path_to_folder_save_img_of_file,
                     recursive=True
                 )
-                # print(objects)
-                # for obj in objects:
-                #     print(obj.object_name)
                 # Tạo danh sách các DeleteObject để xóa
                 delete_objects = [DeleteObject(obj.object_name) for obj in objects]
-                # print(delete_objects)
                 errors = minio_client.remove_objects(
-                    bucket_name=BUCKET_NAME,
+                    bucket_name=settings.BUCKET_NAME,
                     delete_object_list=delete_objects,
                     bypass_governance_mode=True
                 )
-                # print(f"Đã xóa file list image của  khỏi bucket {BUCKET_NAME}")
                 error_count = 0
                 for error in errors:
-                    print(f"Lỗi khi xóa {error.object_name}: {error.message}")
+                    logger.error(f"Lỗi khi xóa {error.object_name}: {error.message}")
                     error_count += 1
 
                 if error_count == 0:
-                    print(f"Đã xóa {len(delete_objects)} file khỏi bucket {BUCKET_NAME}")
+                    logger.error(f"Đã xóa {len(delete_objects)} file khỏi bucket {settings.BUCKET_NAME}")
                 else:
-                    print(f"Có {error_count} lỗi, xóa được {len(delete_objects) - error_count} file")
+                    logger.error(f"Có {error_count} lỗi, xóa được {len(delete_objects) - error_count} file")
 
             except Exception as e:
-                LOGGER.error(f"Error deleting file {file_path}: {str(e)}")
+                logger.error(f"Error deleting file {file_path}: {str(e)}")
 
         # Delete file from Milvus
         collection_id = file_record.get("collection_id")
-        remove_milvus_document(file_id=file_id, collection_name=collection_id)
+        # Remove prefix if present
+        if collection_id.startswith(settings.PREFIX_COLLECTION_NAME):
+            collection_id = collection_id[len(settings.PREFIX_COLLECTION_NAME):]
+        indexing_milvus.delete_file(
+            collection_name=settings.PREFIX_COLLECTION_NAME+collection_id,
+            file_id=file_id
+        )
 
         # Delete record from mongoDB
         if '_id' in file_record:
@@ -220,7 +216,15 @@ class DocumentTool:
         # Add file_id to returned record
         file_record['file_id'] = str(file_record.get('_id', ''))
         return file_record
-
+    def download_file(
+        file_path: str
+    ):
+        res = minio_client.get_object(
+            bucket_name=settings.BUCKET_NAME,
+            object_name=file_path
+        )
+        return res
+ 
     def get_processing_result(self, file_id: str) -> Optional[Dict[str, Any]]:
         """
         Get the processing result for a file

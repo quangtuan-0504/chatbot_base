@@ -368,11 +368,11 @@ class CollectionTool:
         Decrement the document count for a collection by 1
         """
         try:
-            if collection_id.startswith("ai_"):
-                collection_id = collection_id[3:]
+            if collection_id.startswith(settings.PREFIX_COLLECTION_NAME):
+                collection_id = collection_id[len(settings.PREFIX_COLLECTION_NAME):]
 
             current_time = get_gmt7_datetime_for_db().isoformat()
-            result = self.mongodb.COLLECTION.update_one(
+            result = self.mongodb.COLLECTIONS.update_one(
                 {'_id': ObjectId(collection_id)},
                 {
                     '$inc': {'document_count': -1},

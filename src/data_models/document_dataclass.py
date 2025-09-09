@@ -46,7 +46,10 @@ class FilesQueryRequest(BaseModel):
     status: Optional[List[str]] = None
     created_after: Optional[datetime] = None
     created_before: Optional[datetime] = None
-
+class DeleteFileRequest(BaseModel):
+    collection_id: str
+    file_id: str
+ 
  
 
 @dataclass

@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     app_name: str = "Chatbot Pro"
 
     MILVUS_TYPE: str = "DOCKER" # "CLOUD" OR LOCAL CONTAINER : "DOCKER"
-    MILVUS_DB: str = "VECTORDB_TEST" # IF USE CONTAINER LOCAL , PLEASE SET DB(CLUSTER) NAME
+    MILVUS_DB: str = "chatbottuan_v3" # IF USE CONTAINER LOCAL , PLEASE SET DB(CLUSTER) NAME
     MILVUS_ENDPOINT: str = os.getenv("MILVUS_ENDPOINT")
     MILVUS_TOKEN: str = os.getenv("MILVUS_TOKEN")
     MILVUS_HOST: str = os.getenv("MILVUS_HOST")
@@ -33,17 +33,12 @@ class Settings(BaseSettings):
     MINIO_ENDPOINT: str = os.getenv("MINIO_ENDPOINT")
     ACCESS_KEY: str = os.getenv("ACCESS_KEY")
     SECRET_KEY: str = os.getenv("SECRET_KEY")
-    BUCKET_NAME: str = os.getenv("BUCKET_NAME")
+    BUCKET_NAME: str = "chatbottuan-v3"
     UPLOAD_FOLDER: str = "resources/documents" # folder in bucket to save file upload
     DOCUMENT_IMAGES: str = "resources/images" # folder in bucket to save images of file
 
-    MARKER_PDF_URL: str = "10.18.27.59:8060"
-
- 
-
-
     MONGO_URL: str = os.getenv("MONGO_URL")
-    MONGO_DB: str = "chatbotbase"
+    MONGO_DB: str = "chatbottuan-v3"
     MONGO_COLLECTION: List = [
         "users",
         "chats",
@@ -53,11 +48,9 @@ class Settings(BaseSettings):
         "authorizations",
         "user_authorization"
     ]
+
+    MARKER_PDF_URL: str = "10.18.27.59:8060"
  
-
-    PATH_SAVE_FILE_UPLOAD: str = "./FOLDER_FILE_UPLOAD"
-    PATH_SAVE_IMG_OF_FILE: str = "./FOLDER_SAVE_IMG"
-
     DEVICE: int = 0
 
     # Structured configuration for chat and embedding models

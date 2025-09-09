@@ -178,12 +178,13 @@ class IndexingMilvusOriVLLM:
         except Exception as e:
             logger.error(f"Error deleting collection: {str(e)}")
             raise ValueError(f"Error deleting collection: {str(e)}")
-    def delete_file(self, collection_name: str, file_name: str):
+    def delete_file(self, collection_name: str, file_id: str):
+        """collection_name in milvus = prefix + collection_id in mongodb """
         try:
             res = self.client_vector_store.delete(
                 collection_name=collection_name,
                 # highlight-next-line
-                filter= f"source in ['{file_name}']"
+                filter= f"source in ['{file_id}']"
             )
             return f"successfully delete {res} entities"
         except Exception as e:

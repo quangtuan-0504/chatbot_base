@@ -28,7 +28,7 @@ def load_resource()-> Dict:
         # resources["mongoDB"] = get_mongodb()
         mongodb = init_mongo_db()
         resources["collection_tool"] = CollectionTool(mongodb=mongodb)
-        resources["document_tool"] = DocumentTool(mongodb=mongodb)
+        resources["document_tool"] = DocumentTool(mongodb=mongodb) # when init this obj, create_index for documents table, so documents table will be create previous
         resources["chat_tool"] = ChatTool(mongodb=mongodb)
 
 

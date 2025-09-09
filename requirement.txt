@@ -42,3 +42,30 @@ passlib==1.7.4
 python-jose[cryptography]==3.5.0
 pydantic[email]
 uvicorn==0.35.0
+
+
+fastapi[standard]
+pymongo == 4.13.1
+openai == 1.86.0
+pymilvus == 2.5.11
+python-docx==1.1.2
+pillow==11.3.0
+minio==7.2.15
+unstructured==0.18.3
+openpyxl==3.1.5
+langchain-text-splitters==0.3.8
+langchain-community==0.3.25
+
+
+1998  pip install fastapi[standard]
+2003  pip install pymongo==4.13.1
+2004  pip install openai==1.86.0
+2005  pip install pymilvus==2.5.11
+2006  pip install python-docx==1.1.2
+2008  pip install unstructured==0.18.3
+2009  pip install openpyxl==3.1.5
+2010  pip install langchain-text-splitters==0.3.8
+2011  pip install langchain-community= 0.3.25
+2018  pip install pillow
+2019  pip show pillow
+2022  pip install minio==7.2.15

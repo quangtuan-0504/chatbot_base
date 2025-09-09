@@ -1,5 +1,5 @@
 from fastapi import HTTPException, File, Form, UploadFile , APIRouter
-from datetime import datetime , timezone
+from fastapi.responses import StreamingResponse
 from fastapi.responses import JSONResponse
 from typing import Optional
 from urllib.parse import quote
@@ -150,59 +150,100 @@ async def get_documents_of_collection(
         )
 
 @router.put("/delete-file/{userId}")
-async def delete_file(userId: str, collection_id: str = Form(...),file_id : str = Form(...),file_path : str = Form(...), file_name : str = Form(...)):
-
-    db = resource["mongoDB"]
-    file_table = db["documents"]
-    # 1. Xóa cả trong thư mục lưu trữ file
-    if os.path.exists(file_path):
-        os.remove(file_path)
-
-    # 2. Xóa trong mongoDB
-    file_table.delete_one({"_id": ObjectId(file_id)})
-
-    # 3. Xóa trong VectorStore
-    # stt = delete_file_in_collection_qdrant(file_name=file_name)
-    # print(stt)
-    ############
-    indexing = resource["indexing"]
-    stt = indexing.delete_file(collection_name="hello" + collection_id, file_name=file_name)
-    print(stt)
-
-    # 4. Xóa các ảnh liên quan đến file
-    if os.path.exists(f"{settings.PATH_SAVE_IMG_OF_FILE}/hello{collection_id}/{file_name}"):
-        os.remove(f"{settings.PATH_SAVE_IMG_OF_FILE}/hello{collection_id}/{file_name}")
-    return {"collection_id": collection_id, "file_id": file_id}
-
-@router.post('/download-file/{userId}')
-async def downloadFile(userId : str,collection_id: str = Form(...),file_id : str = Form(...)):
-
-    db = resource["mongoDB"]
-    doc_collection = db["documents"]
-
-    # Tìm tài liệu trong cơ sở dữ liệu
-    doc = doc_collection.find_one({"_id": ObjectId(file_id), "collection_id": collection_id})
-
-    if not doc:
-        raise HTTPException(status_code=404, detail="File not found")
-
-    file_path = doc["path"]
+async def delete_file(userId: str,
+    request: DeleteFileRequest
+    ):
 
     try:
-        # Lấy tên file từ đường dẫn
-        file_name = file_path.split("/")[-1]
+        if not request.file_id:
+            return JSONResponse(
+                content=asdict(BaseResponse(
+                    code=400,
+                    message=ResponseMessage.missing_field('file_id')
+                )),
+                status_code=400
+            )
+        try:
+            response_data = resource['document_tool'].remove_file(
+                file_id=request.file_id,
+                collection_id=request.collection_id,
+                indexing_milvus=resource['indexing']                   
+            )
 
-        # Mã hóa tên file để hỗ trợ Unicode
-        encoded_file_name = quote(file_name)
+            # Decrement document count in collection if file was successfully removed
+            if response_data:
+                file_collection_id = response_data.get('collection_id') or request.collection_id
+                if file_collection_id:
+                    resource['collection_tool'].decrement_document_count(file_collection_id)
 
-        # Trả về file với tên gốc và định dạng đúng
-        return FileResponse(
-            path=file_path,
+            return asdict(FileResponse(
+                code=200,
+                data=FileItem.from_dict(response_data) if response_data else None,
+                message=ResponseMessage.DELETE_SUCCESS
+            ))
+
+        except ValueError as ve:
+            return JSONResponse(
+                content=asdict(BaseResponse(
+                    code=404,
+                    message=str(ve)
+                )),
+                status_code=404
+            )
+    except Exception as e:
+        logger .error(f"Remove file error: {str(e)}")
+        return JSONResponse(
+            content=asdict(BaseResponse(
+                code=500,
+                message=ResponseMessage.error_occurred(e)
+            )),
+            status_code=500
+        )
+@router.post('/download-file/{userId}')
+async def download_file(
+    userId : str,
+    collection_id: str = Form(...),
+    file_id : str = Form(...)
+):
+    try:
+        if not file_id or not collection_id:
+            return JSONResponse(
+                content=asdict(BaseResponse(
+                    code=400,
+                    message=ResponseMessage.missing_field('file_id or collection_id')
+                )),
+                status_code=400
+            )
+        # First check if file exists and get its collection
+        file_data = resource['document_tool'].get_file(file_id)
+        if not file_data:
+            return JSONResponse(
+                content=asdict(BaseResponse(
+                    code=404,
+                    message="File not found"
+                )),
+                status_code=404
+            )
+        file_path_in_minio = file_data['file_path']
+
+        response = resource['document_tool'].download_file(
+            file_path = file_path_in_minio
+        )
+        # response = minio_client.get_object(bucket_name, file_path)
+
+        # Trả về file dưới dạng StreamingResponse
+        return StreamingResponse(
+            content=response,
             media_type="application/octet-stream",
-            filename=file_name,
-            headers={"Content-Disposition": f"attachment; filename*=UTF-8''{encoded_file_name}"}
+            headers={
+                "Content-Disposition": f"attachment; filename={file_path_in_minio.split('/')[-1]}"
+            }
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
+        return JSONResponse(
+            content=asdict(BaseResponse(
+                code=500,
+                message=ResponseMessage.error_occurred(e)
+            )),
+            status_code=500
+        )

@@ -148,3 +148,165 @@ def main():
 if __name__ == "__main__":
     main()
     # print(type(config['LST_LLM_USE']))
+class ChatbotRAGvLLM:
+    def __init__(
+        self,
+        model_name= None
+    ):
+        """
+        Initialize the ChatbotRAGvLLM instance
+
+        Args:
+            provider_model_embedding: The embedding provider to use
+            model_name: The name of the LLM model to use
+        """
+        if model_name is None:
+            model_name = os.getenv("LLM_MODEL")
+
+        openai_api_key = "Placeholder_API_KEY"  # Placeholder API key
+        openai_api_base = os.getenv("VLLM_LLM_API")
+
+        self.client = OpenAI(
+            api_key=openai_api_key,
+            base_url=openai_api_base,
+        )
+
+        self.model_name = model_name
+        self.embeddings = get_embedding_model()
+
+    def _process_relevant_docs(self, relevant_docs):
+        """Process retrieved documents and format them for the prompt"""
+        lst_file_relevant = []
+        res_retrieval = ""
+        dic_doc_texts_relevant = defaultdict(list)
+
+        for langchain_doc in relevant_docs:
+            LOGGER.debug(str(langchain_doc))
+            LOGGER.debug(str(langchain_doc.metadata))
+            file_name = langchain_doc.metadata['file_name']
+            file_id = langchain_doc.metadata['file_id']
+
+            dic_doc_texts_relevant[file_name].append(langchain_doc.page_content)
+
+            check_file_exist = 0
+            for file in lst_file_relevant:
+                if file_id == file['file_id']:
+                    check_file_exist = 1
+                    break
+
+            if check_file_exist == 0:
+                lst_file_relevant.append({'file_name': file_name , 'file_id': file_id})
+
+        for k, v in dic_doc_texts_relevant.items():
+            res_retrieval += "\n".join(v) + f"\nthe above information is taken from file: {k}\n\n"
+
+        return res_retrieval, lst_file_relevant
+
+    def _prepare_messages(self, query: str, history_chat: List[Dict[str, str]], context: str = ""):
+        """
+        Prepare messages for the chat completion
+        history_chat: 
+            - role: assistant / user
+            - content: "answer"
+        """
+
+        if context:
+            system_content = RAG_SYSTEM_PROMPT.format(query=query)
+            system_content += f"\ncontext information: {context}"
+            messages = [{"role": "system", "content": system_content}]
+        else:
+            messages = [{"role": "system", "content": GENERAL_SYSTEM_PROMPT}]
+
+        messages.extend(history_chat)
+
+        # Make sure the last message is from the user
+        if not history_chat or messages[-1]["role"] == "assistant":
+            messages.append({"role": "user", "content": query})
+
+        return messages
+
+    def chat_stream(self, query: str, history_chat: List[Dict[str, str]] = [],
+                   collection_name: Optional[str] = None, 
+                   file_ids: Optional[List[str]] = None,
+                   file_names: Optional[List[str]] = None,
+
+        ) -> Generator:
+        """
+        Stream chat with the bot
+
+        Args:
+            query: User's input question/message
+            history_chat: List of previous messages in the conversation
+            collection_name: The name of the collection to search in
+            file_ids: List of file id to filter results
+            file_names: List of file name to filter results
+
+        Yields:
+            Chunks of the response and finally the sources and an end marker
+        """
+        context = ""
+        lst_file_relevant = []
+        lst_img = []
+        if collection_name:
+
+
+
+            client_milvus = get_milvus_connection()
+            response_emb = self.embeddings.embed_query(query)
+
+            query_vector = response_emb
+            context, lst_file_relevant, lst_img  = vicinity_search(
+                client = client_milvus ,
+                query_vector = query_vector,
+                file_ids = file_ids,
+                collection_name= collection_name 
+            )
+
+            # print("context:", context)
+            # print("lst_file_relevant:",lst_file_relevant)
+
+
+
+        messages = self._prepare_messages(query, history_chat, context)
+
+        response = self.client.chat.completions.create(
+            model=self.model_name,
+            messages=messages,
+            max_tokens=512,
+            temperature=0.1,
+            stream=True
+        )
+
+        for chunk in response:
+            chunk_text = chunk.choices[0].delta.content
+            if chunk_text:
+                yield chunk_text
+
+        yield lst_file_relevant if collection_name else []
+
+        # get image from MinIO and convert it into format base64.
+        print("lst_img:",lst_img )
+        lst_img_base64 = [get_file_from_minio(object_name=img_path, return_type="base64") for img_path in lst_img]
+
+        yield {"lst_img":lst_img_base64}
+        yield "[END]"
+
+# Example usage
+def main():
+    # Initialize the chatbot
+    chatbot = ChatbotRAGvLLM(model_name="/LLM/LLMs/kevinbazira/aya-expanse-8b-awq-4bit")
+
+    # Example conversation
+
+    while True:
+        user_input = input("You: ")
+        if user_input.lower() in ['quit', 'exit', 'bye']:
+            break
+
+        response = chatbot.chat(query=user_input, history_chat=[])
+        print(f"Bot: {response}\n\n")
+
+
+if __name__ == "__main__":
+    main()
+    # print(type(config['LST_LLM_USE']))

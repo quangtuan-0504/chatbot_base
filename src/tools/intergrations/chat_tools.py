@@ -11,5 +11,9 @@ from src.utils.timezone_utils import get_gmt7_datetime_for_db
 class ChatTool:
     def __init__(self, mongodb: MongoDBConnections = None):
         self.mongodb = mongodb
+        self.chats_table = self.mongodb.CHATS
+
+        # Create indexes for better performance
+        self.chats_table.create_index([("user_id", 1)])
 
  

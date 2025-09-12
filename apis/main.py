@@ -56,12 +56,11 @@ async def get_department(userId: str):
     return lst_depart
 
 api_router = APIRouter(prefix="/api/v1")
-app.include_router(api_router)
 # Include routers
 api_router.include_router(chat_router, prefix="/chats", tags=["chats"])
 api_router.include_router(collection_router, prefix="/collections", tags=["collections"])
 api_router.include_router(document_router, prefix="/documents", tags=["documents"])
-
+app.include_router(api_router)
 app.include_router(add_user_to_collection.router)
 
 

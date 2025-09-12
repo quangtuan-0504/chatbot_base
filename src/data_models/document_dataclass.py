@@ -44,8 +44,8 @@ class FilesQueryRequest(BaseModel):
     collection_id: str
     file_types: Optional[List[str]] = None
     status: Optional[List[str]] = None
-    created_after: Optional[datetime] = None
-    created_before: Optional[datetime] = None
+    created_after: Optional[datetime|str] = None
+    created_before: Optional[datetime|str] = None
 class DeleteFileRequest(BaseModel):
     collection_id: str
     file_id: str
@@ -76,7 +76,7 @@ class FileItem:
             created_at=format_datetime_gmt7(file_dict.get('created_at', get_gmt7_datetime_for_db()), '%d/%m/%Y %H:%M:%S'),
             updated_at=format_datetime_gmt7(file_dict.get('updated_at', get_gmt7_datetime_for_db()), '%d/%m/%Y %H:%M:%S')
         )
-
+    # This function convert file_name to fileName when convert to dict
     def asdict(self):
         """Convert dataclass to dictionary with camelCase keys"""
         result = {}

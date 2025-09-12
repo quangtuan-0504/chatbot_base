@@ -1,6 +1,6 @@
 #indexingMilvus
 import sys
-sys.path.append("") # Add the root directory to the Python path D:\NAM_A_BANK\chatbot\chatbot_base
+sys.path.append("") # Add the root directory to the Python path D:\hehe\chatbot\chatbot_base
 
 import os
 os.environ['CUDA_LAUNCH_BLOCKING']="1"
@@ -77,10 +77,10 @@ class IndexingMilvusOriVLLM:
             )
             # Add indexes
             index_params.add_index(
-                field_name="file_name",
+                field_name="file_id",
                 index_type="Trie",
                 # index_type="AUTOINDEX",
-                index_name='filename_index'
+                index_name='file_id_index'
             )
             index_params.add_index(
                 field_name="vector",

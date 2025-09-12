@@ -123,7 +123,7 @@ async def delete_collection(userId: str, request: RemoveCollectionRequest):
             return JSONResponse(
                 content=asdict(BaseResponse(
                     code=400,
-                    message=ResponseMessage.missing_field('collectionId')
+                    message=ResponseMessage.missing_field('collection_id')
                 )),
                 status_code=400
             )
@@ -163,7 +163,7 @@ async def delete_collection(userId: str, request: RemoveCollectionRequest):
             status_code=500
         )
 
-@router.get("/get-list-collections/{userId}")
+@router.post("/get-list-collections/{userId}")
 async def get_collections_of_user(userId: str, request: GetCollectionsRequest):
     logger.debug(f"Get all collections for user:{userId}")
     try:

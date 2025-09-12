@@ -46,7 +46,7 @@ uvicorn==0.35.0
 
 fastapi[standard]
 pymongo == 4.13.1
-openai == 1.86.0
+openai == 1.107.1
 pymilvus == 2.5.11
 python-docx==1.1.2
 pillow==11.3.0
@@ -55,11 +55,11 @@ unstructured==0.18.3
 openpyxl==3.1.5
 langchain-text-splitters==0.3.8
 langchain-community==0.3.25
-
+networkx==3.5
 
 1998  pip install fastapi[standard]
 2003  pip install pymongo==4.13.1
-2004  pip install openai==1.86.0
+2004  pip install openai==1.107.1
 2005  pip install pymilvus==2.5.11
 2006  pip install python-docx==1.1.2
 2008  pip install unstructured==0.18.3

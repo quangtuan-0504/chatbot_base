@@ -12,6 +12,7 @@ from tools.intergrations.collection_tools import CollectionTool
 from tools.intergrations.chat_tools import ChatTool
 from tools.intergrations.document_tools import DocumentTool
 from tools.intergrations.minio_tools import ensure_bucket_exists
+from utils.get_list_model_by_provider import get_list_model_by_provider
 
 from tools.rag.indexing_milvus import  IndexingMilvusOriVLLM
 from tools.rag.rag import ChatbotRAGvLLM
@@ -134,13 +135,14 @@ def load_resource()-> Dict:
     return resources
 
 resource = {}
-
+provider_model = {}
 @asynccontextmanager
 async def resourcelifespan(app: FastAPI):
     """Lifespan context manager for FastAPI to load and clean up resources."""
     logger.info("Loading resources...")
     try:
         resource.update(load_resource())
+        provider_model.update(get_list_model_by_provider())
         logger.info(f"Resources loaded: {list(resource.keys())}")
         yield
     finally:

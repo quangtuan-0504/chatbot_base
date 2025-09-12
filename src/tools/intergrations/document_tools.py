@@ -86,7 +86,7 @@ class DocumentTool:
             filters["status"] = {"$in": query.status}
 
         # Filter theo khoảng thời gian updated_at
-        if query.created_after or query.created_before:
+        if query.created_after or query.created_before:# Current annotation is Optional[datetime] if a <=> if a!=None , thêm str vào annotation để if a <=> if a!=None and a!=""
             filters["updated_at"] = {}
             if query.created_after:
                 filters["updated_at"]["$gte"] = query.created_after
@@ -94,7 +94,7 @@ class DocumentTool:
                 filters["updated_at"]["$lte"] = query.created_before
 
         # Truy vấn MongoDB
-        cursor = self.mongodb.DOCUMENTS.find(filters).sort('updated_at', -1)  
+        cursor = self.documents_collection.find(filters).sort('updated_at', -1)  
         files = list(cursor)
         # LOGGER.debug(str(files))
         # Add the _id as file_id in each record
@@ -216,7 +216,7 @@ class DocumentTool:
         # Add file_id to returned record
         file_record['file_id'] = str(file_record.get('_id', ''))
         return file_record
-    def download_file(
+    def download_file(self,
         file_path: str
     ):
         res = minio_client.get_object(

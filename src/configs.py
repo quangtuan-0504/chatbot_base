@@ -58,7 +58,7 @@ class Settings(BaseSettings):
 
     chat_models: List[Dict[str, any]] = [
         # {
-        #     "name": "gpt-4o-mini",
+        #     "name": "gpt-4o-mini", # Unique name for the model
         #     "provider": "openai-api", # "vllm" or "openai-api"
         #     "path": "",
         #     "base_url": "",
@@ -68,7 +68,7 @@ class Settings(BaseSettings):
             "name": "aya-expanse-8b",
             "provider": "vllm",
             "path": "/LLM/LLMs/kevinbazira/aya-expanse-8b-awq-4bit",
-            "base_url": "http://localhost:8000/v1",
+            "base_url": "http://10.18.27.59:8000/v1",
             "api_key": os.getenv("VLLM_API_KEY_aya_expanse_8b"),
         }
     ]
@@ -78,7 +78,7 @@ class Settings(BaseSettings):
         "name": "BAAI/bge-m3",
         "provider": "vllm",
         "path": "/LLM/EmbeddingModels/BAAI/bge-m3",
-        "base_url": "http://localhost:8001/v1",
+        "base_url": "http://10.18.27.59:8001/v1",
         "api_key": "",  # Optional, if using vLLM or other providers
         "dim": 1024,  # Dimension of the embedding vector
     }

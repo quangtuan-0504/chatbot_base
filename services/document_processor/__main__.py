@@ -72,6 +72,13 @@ except Exception as e:
     logger.error(f"Failed to initialize IndexingMilvusOriVLLM: {str(e)}")
     raise
 
+# # test connnect emb model vllm
+# response = openai_emb_client.embeddings.create(
+#     input="how are you ?",
+#     model=embedding_model_name_or_path
+# )
+
+# print(response.data[0].embedding)
 
 # Configuration
 MAX_PROCESSING_TIME = 300  # seconds

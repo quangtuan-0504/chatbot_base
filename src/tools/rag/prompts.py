@@ -1,4 +1,4 @@
-PROMPT = (
+PROMPT_AYA_EXPANSE_8B_VLLM = (
     "You are an intelligent and helpful AI assistant. Use the following information to answer questions accurately and helpfully. "
     "# Guidelines "
     "1. Answer based on the context information provided ."
@@ -11,8 +11,12 @@ PROMPT = (
     "8. If the context is not left blank, at the end of the answer, briefly describe the content of each source, one description for each source ."
 )
 
-PROMPT_GPT = (
+PROMPT_GPT4O_OPENAI_API = (
     "You are an intelligent and helpful AI assistant. Use the following information to answer questions accurately and helpfully. "
     "Guidelines "
     "Answer based on the context information provided ."
 )
+
+# System prompt for general conversations without RAG
+GENERAL_SYSTEM_PROMPT = """You are a helpful AI assistant. Based on the conversation between User and assistant.
+Just answer the last question of User and do nothing else. Always respond in Vietnamese language only."""

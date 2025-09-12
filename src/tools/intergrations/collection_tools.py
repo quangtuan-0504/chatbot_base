@@ -14,7 +14,9 @@ from src.utils.timezone_utils import get_gmt7_datetime_for_db
 class CollectionTool:
     def __init__(self, mongodb: MongoDBConnections = None):
         self.mongodb = mongodb
-
+        self.collections_table = self.mongodb.COLLECTIONS
+        # Create indexes for better performance
+        # self.collections_table.create_index([("_id",1),("collection_name", 1)])
     def create_collection(self,
         indexing_milvus: IndexingMilvusOriVLLM,
         collection_name: str,
@@ -45,11 +47,11 @@ class CollectionTool:
         logger.debug(f"Create collection: {collection_data}")
 
         try:
-            check_collection_exits = self.mongodb.COLLECTIONS.find_one({"collection_name": collection_name})
+            check_collection_exits = self.collections_table.find_one({"collection_name": collection_name})
             # if collection doesn't exist, create it
             if not check_collection_exits:
                 # Insert MongoDB record
-                collection_new = self.mongodb.COLLECTIONS.insert_one(collection_data)
+                collection_new = self.collections_table.insert_one(collection_data)
                 collection_id = str(collection_new.inserted_id)
                 logger.debug(f"Collection created: {collection_id}")
                 # thêm phân quyền collection vừa tạo cho người tạo
@@ -86,7 +88,7 @@ class CollectionTool:
                     try:
                         logger.info(
                             f"Removing MongoDB record {collection_id} due to Milvus collection creation failure")
-                        self.mongodb.COLLECTIONS.delete_one(
+                        self.collections_table.delete_one(
                             {"_id": collection_new.inserted_id})
                         self.mongodb.USER_COLLECTION.delete_one(
                             {"_id": new_user_collection.inserted_id})
@@ -110,7 +112,7 @@ class CollectionTool:
         """
         try:
             # Find the collection by ID
-            collection = self.mongodb.COLLECTIONS.find_one(
+            collection = self.collections_table.find_one(
                 {'_id': ObjectId(collection_id)}
             )
 
@@ -132,7 +134,7 @@ class CollectionTool:
         """
         try:
             # Find and validate collection exists
-            existing_collection = self.mongodb.COLLECTIONS.find_one(
+            existing_collection = self.collections_table.find_one(
                 {'_id': ObjectId(collection_id)})
             if not existing_collection:
                 raise ValueError(
@@ -140,7 +142,7 @@ class CollectionTool:
 
             # Update the collection name and updated_at timestamp
             current_time = get_gmt7_datetime_for_db().isoformat()
-            result = self.mongodb.COLLECTIONS.update_one(
+            result = self.collections_table.update_one(
                 {'_id': ObjectId(collection_id)},
                 {'$set': {
                     'collection_name': collection_name,
@@ -183,7 +185,7 @@ class CollectionTool:
             collection_id = collection_id[len(settings.PREFIX_COLLECTION_NAME):]
 
         # Find and validate collection exists
-        collection = self.mongodb.COLLECTIONS.find_one(
+        collection = self.collections_table.find_one(
             {'_id': ObjectId(collection_id)})
         if not collection:
             raise ValueError("Collection not found in MongoDB")
@@ -195,7 +197,7 @@ class CollectionTool:
                 raise RuntimeError(f"Failed to delete Milvus collection: {str(e)}")
 
             # Remove metadata from MongoDB
-            del_collection = self.mongodb.COLLECTIONS.delete_one(
+            del_collection = self.collections_table.delete_one(
                 {'_id': ObjectId(collection_id)}
             )
             del_documents = self.mongodb.DOCUMENTS.delete_many(
@@ -308,7 +310,7 @@ class CollectionTool:
         if lst_collection_of_user:
             lst=[]
             for collection in lst_collection_of_user:
-                re = self.mongodb.COLLECTIONS.find_one({"_id": ObjectId(collection["collection_id"])})
+                re = self.collections_table.find_one({"_id": ObjectId(collection["collection_id"])})
                 lst.append(re)
             return lst
         else:
@@ -329,7 +331,7 @@ class CollectionTool:
 
         try:
             # Convert string ID to ObjectId
-            collection = self.mongodb.COLLECTIONS.find_one(
+            collection = self.collections_table.find_one(
                 {'_id': ObjectId(collection_id)})
             return collection is not None
         except Exception as e:
@@ -345,7 +347,7 @@ class CollectionTool:
 
 
             current_time = get_gmt7_datetime_for_db().isoformat()
-            result = self.mongodb.COLLECTIONS.update_one(
+            result = self.collections_table.update_one(
                 {'_id': ObjectId(collection_id)},
                 {
                     '$inc': {'document_count': 1},
@@ -372,7 +374,7 @@ class CollectionTool:
                 collection_id = collection_id[len(settings.PREFIX_COLLECTION_NAME):]
 
             current_time = get_gmt7_datetime_for_db().isoformat()
-            result = self.mongodb.COLLECTIONS.update_one(
+            result = self.collections_table.update_one(
                 {'_id': ObjectId(collection_id)},
                 {
                     '$inc': {'document_count': -1},
@@ -400,7 +402,7 @@ class CollectionTool:
                 collection_id = collection_id[len(settings.PREFIX_COLLECTION_NAME):]
 
             current_time = get_gmt7_datetime_for_db().isoformat()
-            result = self.mongodb.COLLECTIONS.update_one(
+            result = self.collections_table.update_one(
                 {'_id': ObjectId(collection_id)},
                 {
                     '$inc': {'total_size_bytes': size_bytes},
@@ -428,7 +430,7 @@ class CollectionTool:
                 collection_id = collection_id[len(settings.PREFIX_COLLECTION_NAME):]
 
             current_time = get_gmt7_datetime_for_db().isoformat()
-            result = self.mongodb.COLLECTIONS.update_one(
+            result = self.collections_table.update_one(
                 {'_id': ObjectId(collection_id)},
                 {
                     '$inc': {'total_size_bytes': -size_bytes},

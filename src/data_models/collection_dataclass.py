@@ -81,7 +81,7 @@ class CollectionItem:
         return cls(
             collection_id=str(collection_dict.get('_id', collection_dict.get('id', ''))),
             collection_name=collection_dict.get('collection_name', ''),
-            user_id=str(collection_dict.get('user_id', '')),
+            user_id=str(collection_dict.get('user_id', collection_dict.get('user_id_create', ''))),
             role=collection_dict.get('role', 'owner'),
             status=collection_dict.get('status', 'active'),
             created_at=format_timestamp(collection_dict.get('created_at')),

@@ -33,10 +33,10 @@ async def add_document(userId:str,
             )
 
         # Extract metadata
-        if file_type is None:
+        if not file_type:
             file_type = file.filename.split(".")[-1]
 
-        if file_name is None:
+        if not file_name:
             file_name = file.filename
 
         if not collection_id:
@@ -56,9 +56,9 @@ async def add_document(userId:str,
                 )),
                 status_code=400
             )
-
+        
         collection_folder = os.path.join(settings.UPLOAD_FOLDER, collection_id)
-        file_name_nosuffix, file_extension = os.path.splitext(file_name)[1]
+        file_name_nosuffix, file_extension = os.path.splitext(file_name)
         temp_name = f"{file_name_nosuffix}_{str(uuid.uuid4())}{file_extension}"
         temp_path = os.path.join(collection_folder, temp_name)
 

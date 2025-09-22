@@ -9,7 +9,7 @@ from ..data_models import *
 
 router = APIRouter()
 @router.post("/new-collection/{userId}")
-async def create_collection(userId: str , request: CreateCollectionRequest):
+async def create_new_collection(userId: str , request: CreateCollectionRequest):
     logger.info(f"Create collection request: {request}")
 
     try:

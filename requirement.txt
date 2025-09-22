@@ -56,6 +56,8 @@ openpyxl==3.1.5
 langchain-text-splitters==0.3.8
 langchain-community==0.3.25
 networkx==3.5
+pyjwt==2.10.1
+pip install "passlib[bcrypt]"
 
 1998  pip install fastapi[standard]
 2003  pip install pymongo==4.13.1

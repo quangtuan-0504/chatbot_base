@@ -21,6 +21,9 @@ class Settings(BaseSettings):
 
 
     app_name: str = "Chatbot Pro"
+    # Admin account
+    ADMIN_USERNAME: str = os.getenv("ADMIN_USERNAME", "admin")
+    ADMIN_PASSWORD: str = os.getenv("ADMIN_PASSWORD", "admin")
 
     MILVUS_TYPE: str = "DOCKER" # "CLOUD" OR LOCAL CONTAINER : "DOCKER"
     MILVUS_DB: str = "chatbottuan_v3" # IF USE CONTAINER LOCAL , PLEASE SET DB(CLUSTER) NAME
@@ -41,12 +44,12 @@ class Settings(BaseSettings):
     MONGO_DB: str = "chatbottuan-v3"
     MONGO_COLLECTION: List = [
         "users",
+        "groups",
+        "user_group",
         "chats",
         "collections",
         "user_collection",
         "documents",
-        "authorizations",
-        "user_authorization"
     ]
 
     MARKER_PDF_URL: str = "10.18.27.59:8060"

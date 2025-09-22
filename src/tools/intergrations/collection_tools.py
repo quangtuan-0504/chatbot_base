@@ -15,7 +15,9 @@ class CollectionTool:
     def __init__(self, mongodb: MongoDBConnections = None):
         self.mongodb = mongodb
         self.collections_table = self.mongodb.COLLECTIONS
-        # Create indexes for better performance
+        self.user_collection_table = self.mongodb.USER_COLLECTION
+        self.documents_table = self.mongodb.DOCUMENTS
+        # Create indexes for better performance, index the field for whatever you search for.
         # self.collections_table.create_index([("_id",1),("collection_name", 1)])
     def create_collection(self,
         indexing_milvus: IndexingMilvusOriVLLM,
@@ -29,7 +31,7 @@ class CollectionTool:
         current_time = get_gmt7_datetime_for_db().isoformat()
  
         collection_data = {
-            "user_id_create": user_id,
+            "user_id_create": ObjectId(user_id),
             "collection_name": collection_name,
             "status": status,
             "created_at": current_time,
@@ -55,13 +57,13 @@ class CollectionTool:
                 collection_id = str(collection_new.inserted_id)
                 logger.debug(f"Collection created: {collection_id}")
                 # thêm phân quyền collection vừa tạo cho người tạo
-                new_user_collection = self.mongodb.USER_COLLECTION.insert_one(
+                new_user_collection = self.user_collection_table.insert_one(
                     {
-                        "user_id": user_id,
-                        "collection_id": collection_id,
+                        "user_id": ObjectId(user_id),
+                        "collection_id": ObjectId(collection_id),
                         "role": "owner",
                         "assigned_at": current_time,
-                        "assigned_by": user_id
+                        "assigned_by": ObjectId(user_id)
                     })
                 logger.debug(f"User collection created: {new_user_collection}")
                 try:
@@ -90,7 +92,7 @@ class CollectionTool:
                             f"Removing MongoDB record {collection_id} due to Milvus collection creation failure")
                         self.collections_table.delete_one(
                             {"_id": collection_new.inserted_id})
-                        self.mongodb.USER_COLLECTION.delete_one(
+                        self.user_collection_table.delete_one(
                             {"_id": new_user_collection.inserted_id})
                         logger.info(
                             f"Successfully removed MongoDB record {collection_id}")
@@ -156,7 +158,7 @@ class CollectionTool:
             return {
                 "id": collection_id,
                 "collection_name": collection_name,
-                "user_id": existing_collection.get('user_id'),
+                "user_id": existing_collection.get('user_id_create'),
                 "status": existing_collection.get('status'),
                 "created_at": existing_collection.get('created_at'),
                 "updated_at": current_time,
@@ -200,11 +202,11 @@ class CollectionTool:
             del_collection = self.collections_table.delete_one(
                 {'_id': ObjectId(collection_id)}
             )
-            del_documents = self.mongodb.DOCUMENTS.delete_many(
-                {'collection_id': collection_id}
+            del_documents = self.documents_table.delete_many(
+                {'collection_id': ObjectId(collection_id)}
             )
-            del_user_collection = self.mongodb.USER_COLLECTION.delete_many(
-                {'collection_id': collection_id}
+            del_user_collection = self.user_collection_table.delete_many(
+                {'collection_id': ObjectId(collection_id)}
             )
             if del_collection.deleted_count != 1: # only remove one collection
                 raise RuntimeError("Failed to delete collection metadata")
@@ -284,8 +286,8 @@ class CollectionTool:
             logger.error(f"Thực hiện xóa file list image của collection khỏi bucket {settings.BUCKET_NAME}")
         elif role in ['editer', 'viewer']:
             # chỉ xóa trong bảng user collection của mongoDB
-            del_user_collection = self.mongodb.USER_COLLECTION.delete_one(
-                {'user_id': user_id, 'collection_id': collection_id}
+            del_user_collection = self.user_collection_table.delete_one(
+                {'user_id': ObjectId(user_id), 'collection_id': ObjectId(collection_id)}
             )
             logger.info(f"num user collection deleted: {del_user_collection.deleted_count}")
 
@@ -301,12 +303,12 @@ class CollectionTool:
         roles: list|None
     ):
         if roles:
-            lst_collection_of_user = self.mongodb.USER_COLLECTION.find({
-                "user_id": user_id,
+            lst_collection_of_user = self.user_collection_table.find({
+                "user_id": ObjectId(user_id),
                 "role": {"$in": roles}
             })
         elif not roles:
-            lst_collection_of_user = self.mongodb.USER_COLLECTION.find({"user_id":user_id})
+            lst_collection_of_user = self.user_collection_table.find({"user_id":ObjectId(user_id)})
         if lst_collection_of_user:
             lst=[]
             for collection in lst_collection_of_user:

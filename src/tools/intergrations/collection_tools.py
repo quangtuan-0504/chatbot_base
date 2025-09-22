@@ -31,7 +31,7 @@ class CollectionTool:
         current_time = get_gmt7_datetime_for_db().isoformat()
  
         collection_data = {
-            "user_id_create": ObjectId(user_id),
+            "user_id_create": user_id,
             "collection_name": collection_name,
             "status": status,
             "created_at": current_time,
@@ -59,11 +59,11 @@ class CollectionTool:
                 # thêm phân quyền collection vừa tạo cho người tạo
                 new_user_collection = self.user_collection_table.insert_one(
                     {
-                        "user_id": ObjectId(user_id),
-                        "collection_id": ObjectId(collection_id),
+                        "user_id": user_id,
+                        "collection_id": collection_id,
                         "role": "owner",
                         "assigned_at": current_time,
-                        "assigned_by": ObjectId(user_id)
+                        "assigned_by": user_id
                     })
                 logger.debug(f"User collection created: {new_user_collection}")
                 try:
@@ -203,10 +203,10 @@ class CollectionTool:
                 {'_id': ObjectId(collection_id)}
             )
             del_documents = self.documents_table.delete_many(
-                {'collection_id': ObjectId(collection_id)}
+                {'collection_id': collection_id}
             )
             del_user_collection = self.user_collection_table.delete_many(
-                {'collection_id': ObjectId(collection_id)}
+                {'collection_id': collection_id}
             )
             if del_collection.deleted_count != 1: # only remove one collection
                 raise RuntimeError("Failed to delete collection metadata")
@@ -287,7 +287,7 @@ class CollectionTool:
         elif role in ['editer', 'viewer']:
             # chỉ xóa trong bảng user collection của mongoDB
             del_user_collection = self.user_collection_table.delete_one(
-                {'user_id': ObjectId(user_id), 'collection_id': ObjectId(collection_id)}
+                {'user_id': user_id, 'collection_id': collection_id}
             )
             logger.info(f"num user collection deleted: {del_user_collection.deleted_count}")
 
@@ -304,7 +304,7 @@ class CollectionTool:
     ):
         if roles:
             lst_collection_of_user = self.user_collection_table.find({
-                "user_id": ObjectId(user_id),
+                "user_id": user_id,
                 "role": {"$in": roles}
             })
         elif not roles:

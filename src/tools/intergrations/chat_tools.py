@@ -18,7 +18,7 @@ class ChatTool:
         self.chats_table.create_index([("user_id", 1),("_id",1)])
     def get_chat(self, chat_id: str, user_id: str):
         try:
-            chat = self.chats_table.find_one({"user_id": ObjectId(user_id), "_id": ObjectId(chat_id)})
+            chat = self.chats_table.find_one({"user_id": user_id, "_id": ObjectId(chat_id)})
             return chat
         except Exception as e:
             logger.error(f"Error in get_chat: {str(e)}")
@@ -32,7 +32,7 @@ class ChatTool:
         try:
             chat = {
                 "title": question[:40],
-                "user_id": ObjectId(user_id),
+                "user_id": user_id,
                 "create_at": datetime.now(timezone.utc).strftime("%d-%m-%Y %H:%M"),
                 "update_at": datetime.now(timezone.utc).strftime("%d-%m-%Y %H:%M"),
                 "history": [
@@ -52,7 +52,7 @@ class ChatTool:
     ):  
         try:
             result = self.chats_table.update_one(
-                {"user_id": ObjectId(user_id), "_id": ObjectId(chat_id)},
+                {"user_id": user_id, "_id": ObjectId(chat_id)},
                 {
                     "$set": {"update_at": datetime.now(timezone.utc).strftime("%d-%m-%Y %H:%M")}, 
                     "$push": {"history": {"$each": new_items}}
@@ -63,7 +63,7 @@ class ChatTool:
             raise f"update chat history in mongodb faild: {str(e)}"
     def delete_chat(self, chat_id: str, user_id: str):
         try:
-            query = {"user_id": ObjectId(user_id), "_id": ObjectId(chat_id)}
+            query = {"user_id": user_id, "_id": ObjectId(chat_id)}
             result = self.chats_table.delete_one(query)
             if result.deleted_count == 0:
                 return False
@@ -73,7 +73,7 @@ class ChatTool:
     def get_list_chat(self, user_id: str):
         try:
             lst_chat = self.chats_table.find(
-                {"user_id": ObjectId(user_id)},
+                {"user_id": user_id},
                 {"_id": 1,"title": 1, "create_at": 1 , "update_at" : 1}
             )
             if not lst_chat:
@@ -83,7 +83,7 @@ class ChatTool:
             raise f"not found list chat of user: {user_id} in mongodb: {str(e)}"
     def rename_chat(self, chat_id: str, user_id: str, new_title: str):
         try:
-            query = {"user_id": ObjectId(user_id), "_id": ObjectId(chat_id)}
+            query = {"user_id": user_id, "_id": ObjectId(chat_id)}
             result = self.chats_table.update_one(
                 query,
                 {

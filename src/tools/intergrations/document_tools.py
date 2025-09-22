@@ -40,8 +40,8 @@ class DocumentTool:
             'file_name': original_file_name,
             'minio_stored_file_name': minio_stored_file_name,
             'file_path': file_path,
-            'user_id': ObjectId(user_id),
-            'collection_id': ObjectId(collection_id),
+            'user_id': user_id,
+            'collection_id': collection_id,
             'file_type': file_type,
             'description': description,
             'status': 'pending',
@@ -198,7 +198,7 @@ class DocumentTool:
                 logger.error(f"Error deleting file {file_path}: {str(e)}")
 
         # Delete file from Milvus
-        collection_id = str(file_record.get("collection_id"))
+        collection_id = file_record.get("collection_id")
         # Remove prefix if present
         if collection_id.startswith(settings.PREFIX_COLLECTION_NAME):
             collection_id = collection_id[len(settings.PREFIX_COLLECTION_NAME):]

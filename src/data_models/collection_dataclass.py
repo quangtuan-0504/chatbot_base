@@ -13,12 +13,16 @@ class CreateCollectionRequest(BaseModel):
     description: str|None = None
     status: str|None = "active"
     tags: list[str]|None = None
+    is_public: bool|None = False
+    is_hidden: bool|None = False
 class RemoveCollectionRequest(BaseModel):
     collection_id: str = None
     collection_name: str|None = None
 class ModifyCollectionRequest(BaseModel):
     collection_id: str
-    collection_name: Optional[str] = None
+    collection_name: Optional[str]|None = None
+    is_public: bool|None = False
+    is_hidden: bool|None = False
 class GetCollectionsRequest(BaseModel):
     roles: List|None = None
  

@@ -25,7 +25,9 @@ class CollectionTool:
         user_id: str,
         status: str="active",
         description: str=None,
-        tags: list[str]=None
+        tags: list[str]=None,
+        is_public: bool=False,
+        is_hidden: bool=False
     ):
         # current_time = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
         current_time = get_gmt7_datetime_for_db().isoformat()
@@ -37,7 +39,9 @@ class CollectionTool:
             "created_at": current_time,
             "updated_at": current_time,
             "document_count": 0,
-            "total_size_bytes": 0
+            "total_size_bytes": 0,
+            "is_public": is_public,
+            "is_hidden": is_hidden,
         }
 
         # Add optional fields if provided
@@ -130,7 +134,8 @@ class CollectionTool:
             logger.error(f"Error getting collection by ID: {str(e)}")
             raise Exception(f"Failed to retrieve collection: {str(e)}")
 
-    def change_collection_name(self, collection_id, collection_name):
+    def change_collection_name(self, collection_id: str, collection_name: str,
+        ) -> dict:
         """
         Change the name of a collection by its ID
         """

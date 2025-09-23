@@ -13,6 +13,7 @@ from tools.intergrations.chat_tools import ChatTool
 from tools.intergrations.document_tools import DocumentTool
 from tools.intergrations.minio_tools import ensure_bucket_exists
 from utils.get_list_model_by_provider import get_list_model_by_provider
+from tools.intergrations.user_tools import UserTool
 
 from tools.rag.indexing_milvus import  IndexingMilvusOriVLLM
 from tools.rag.rag import ChatbotRAGvLLM
@@ -26,12 +27,23 @@ def load_resource()-> Dict:
 
     # Load MongoDB
     try:
-        # resources["mongoDB"] = get_mongodb()
         mongodb = init_mongo_db()
+        resources["mongoDB"] = mongodb
         resources["collection_tool"] = CollectionTool(mongodb=mongodb)
-        resources["document_tool"] = DocumentTool(mongodb=mongodb) # when init this obj, create_index for documents table, so documents table will be create previous
+        resources["document_tool"] = DocumentTool(mongodb=mongodb)
         resources["chat_tool"] = ChatTool(mongodb=mongodb)
+        resources["user_tool"] = UserTool(mongodb=mongodb)
 
+        # Create admin user if not exists
+        try:
+            resources["user_tool"].create_admin_user(
+                email=settings.ADMIN_EMAIL,
+                password=settings.ADMIN_PASSWORD,
+                username=settings.ADMIN_USERNAME,
+                name="System Administrator"
+            )
+        except Exception as admin_error:
+            logger.error(f"Failed to create admin user: {str(admin_error)}")
 
         logger.info("MongoDB connection established.")
     except Exception as e:

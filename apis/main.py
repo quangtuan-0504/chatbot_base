@@ -11,6 +11,8 @@ from src.tools.load_resources import resourcelifespan
 from src.routers.chats import router as chat_router
 from src.routers.documents import router as document_router
 from src.routers.collections import router as collection_router
+from src.routers.auth import router as auth_router
+from src.routers.users import router as user_router
 
 from loggers.logapp import logger
 from configs import settings
@@ -36,26 +38,11 @@ app.add_middleware(
 async def root():
     return {"message": f"welcome to {settings.app_name} API!"}
 
-@app.post("/sign-up") 
-async def add_user():
-    return "add user successfully!"
-
-@app.post("/log-in")
-async def check_user():
-    return "Log-in sucessfully!"
-@app.put("/reset_password")
-async def resetpass():
-    return "Reset pass successfully!"
-@app.post("/log-out")
-async def logout():
-    return "Logout Successfully!"
-@app.get("/api/getListDepartment/{userId}")
-async def get_department(userId: str):
-    lst_depart = ["depart 1","depart 2","depart 3","depart 4","depart 5"]
-    return lst_depart
 
 api_router = APIRouter(prefix="/api/v1")
 # Include routers
+api_router.include_router(auth_router, prefix="/auth", tags=["authentication"])
+api_router.include_router(user_router, prefix="/users", tags=["users"])
 api_router.include_router(chat_router, prefix="/chats", tags=["chats"])
 api_router.include_router(collection_router, prefix="/collections", tags=["collections"])
 api_router.include_router(document_router, prefix="/documents", tags=["documents"])

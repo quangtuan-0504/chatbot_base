@@ -24,6 +24,13 @@ class Settings(BaseSettings):
     # Admin account
     ADMIN_USERNAME: str = os.getenv("ADMIN_USERNAME", "admin")
     ADMIN_PASSWORD: str = os.getenv("ADMIN_PASSWORD", "admin")
+    ADMIN_EMAIL: str = os.getenv("ADMIN_EMAIL", "admin@namabank.com.vn")
+
+    # JWT settings
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-change-this-in-production")
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     MILVUS_TYPE: str = "DOCKER" # "CLOUD" OR LOCAL CONTAINER : "DOCKER"
     MILVUS_DB: str = "chatbottuan_v3" # IF USE CONTAINER LOCAL , PLEASE SET DB(CLUSTER) NAME

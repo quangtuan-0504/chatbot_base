@@ -34,7 +34,7 @@ app.add_middleware(
 
 @app.get("/")
 async def root():
-    return {"message": "Hello World"}
+    return {"message": f"welcome to {settings.app_name} API!"}
 
 @app.post("/sign-up") 
 async def add_user():

@@ -58,7 +58,7 @@ async def create_new_collection(userId: str , request: CreateCollectionRequest):
             status_code=500
         )
     
-@router.post('/modify')
+@router.post('/modify-collection')
 async def modify_collection(
     request: ModifyCollectionRequest,
 ):

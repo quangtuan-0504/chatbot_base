@@ -11,7 +11,6 @@ from src.tools.load_resources import resourcelifespan
 from src.routers.chats import router as chat_router
 from src.routers.documents import router as document_router
 from src.routers.collections import router as collection_router
-from src.routers.shares import add_user_to_collection
 
 from loggers.logapp import logger
 from configs import settings
@@ -61,7 +60,6 @@ api_router.include_router(chat_router, prefix="/chats", tags=["chats"])
 api_router.include_router(collection_router, prefix="/collections", tags=["collections"])
 api_router.include_router(document_router, prefix="/documents", tags=["documents"])
 app.include_router(api_router)
-app.include_router(add_user_to_collection.router)
 
 
   

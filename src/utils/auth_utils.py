@@ -8,8 +8,8 @@ from fastapi.security import OAuth2PasswordBearer
 import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__),'..')))
-from ..configs import settings
-from ..tools.load_resources import resource
+from configs import settings
+from tools.load_resources import resource
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 

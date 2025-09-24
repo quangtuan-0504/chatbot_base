@@ -41,8 +41,8 @@ class Settings(BaseSettings):
     PREFIX_COLLECTION_NAME: str = "hello_"
 
     MINIO_ENDPOINT: str = os.getenv("MINIO_ENDPOINT")
-    ACCESS_KEY: str = os.getenv("ACCESS_KEY")
-    SECRET_KEY: str = os.getenv("SECRET_KEY")
+    ACCESS_KEY_MINIO: str = os.getenv("ACCESS_KEY_MINIO")
+    SECRET_KEY_MINIO: str = os.getenv("SECRET_KEY_MINIO")
     BUCKET_NAME: str = "chatbottuan-v3"
     UPLOAD_FOLDER: str = "resources/documents" # folder in bucket to save file upload
     DOCUMENT_IMAGES: str = "resources/images" # folder in bucket to save images of file

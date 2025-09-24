@@ -4,27 +4,26 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__),'..','..'
 from helpers.mongodb.get_mongodb import MongoDBConnections
 from bson import ObjectId
 from src.utils.timezone_utils import get_gmt7_datetime_for_db
-from passlib.context import CryptContext
 from loggers.logapp import logger
 import re
+import bcrypt
 
 class UserTool:
     def __init__(self, mongodb: MongoDBConnections = None):
         self.mongodb = mongodb
         self.users_table = self.mongodb.USERS
-        # Password hashing context
-        self.pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
         # Create indexes for better performance
         self.users_table.create_index([("email", 1)], unique=True)
         self.users_table.create_index([("username", 1)], unique=True)
 
     def _hash_password(self, password: str) -> str:
-        """Hash a password using passlib CryptContext"""
-        return self.pwd_context.hash(password)
+        """Hash a password using bcrypt"""
+        salt = bcrypt.gensalt()
+        return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
 
     def _verify_password(self, plain_password: str, hashed_password: str) -> bool:
-        """Verify a password against its hash using passlib CryptContext"""
-        return self.pwd_context.verify(plain_password, hashed_password)
+        """Verify a password against its hash using bcrypt"""
+        return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
 
     def create_user(self, email: str, password: str, username: str = None, name: str = None) -> dict:
         """Create a new user"""

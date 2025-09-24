@@ -8,8 +8,8 @@ from configs import settings
 
 # config MinIO
 MINIO_ENDPOINT = settings.MINIO_ENDPOINT
-ACCESS_KEY = settings.ACCESS_KEY
-SECRET_KEY = settings.SECRET_KEY
+ACCESS_KEY = settings.ACCESS_KEY_MINIO
+SECRET_KEY = settings.SECRET_KEY_MINIO
 SECURE = False
 # initial client
 minio_client = Minio(

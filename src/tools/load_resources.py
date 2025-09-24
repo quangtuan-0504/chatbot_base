@@ -11,9 +11,10 @@ from helpers.minio import minio_client
 from tools.intergrations.collection_tools import CollectionTool
 from tools.intergrations.chat_tools import ChatTool
 from tools.intergrations.document_tools import DocumentTool
+from tools.intergrations.user_tools import UserTool
 from tools.intergrations.minio_tools import ensure_bucket_exists
 from utils.get_list_model_by_provider import get_list_model_by_provider
-from tools.intergrations.user_tools import UserTool
+
 
 from tools.rag.indexing_milvus import  IndexingMilvusOriVLLM
 from tools.rag.rag import ChatbotRAGvLLM

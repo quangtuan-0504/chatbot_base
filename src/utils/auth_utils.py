@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 import jwt
-import bcrypt
+from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from ..configs import settings
@@ -9,15 +9,16 @@ from ..tools.load_resources import resource
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
+# Password hashing context
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
 def hash_password(password: str) -> str:
-    """Hash a password using bcrypt"""
-    salt = bcrypt.gensalt()
-    hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
-    return hashed.decode('utf-8')
+    """Hash a password using passlib CryptContext"""
+    return pwd_context.hash(password)
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a password against its hash"""
-    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+    """Verify a password against its hash using passlib CryptContext"""
+    return pwd_context.verify(plain_password, hashed_password)
 
 def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
     """Create a JWT access token"""

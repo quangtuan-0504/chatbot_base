@@ -1,14 +1,14 @@
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Annotated
 import jwt
 import bcrypt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
 
 import os
 import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__),'..')))
-from configs import settings
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__),'..','..')))
+from src.configs import settings
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
@@ -60,8 +60,10 @@ def verify_token(token: str) -> Dict[str, Any]:
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-async def get_current_user(token: str = Depends(oauth2_scheme)) -> Dict[str, Any]:
+async def get_current_user(request: Request, token: Annotated[str, Depends(oauth2_scheme)]) -> Dict[str, Any]:
     """Get current user from JWT token"""
+    print("Token:", token)  # Debugging line to print the token
+    print(request.headers)  # Debugging line to print request headers
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -80,7 +82,8 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> Dict[str, Any
         raise credentials_exception
     
     # Import here to avoid circular import
-    from tools.load_resources import resource
+    from src.tools.load_resources import resource
+    # from tools.load_resources import resource # ko hiểu sao import như này thì resource lại là dict rỗng
     user = resource["user_tool"].get_user_by_email(email)
     if user is None:
         raise credentials_exception

@@ -4,13 +4,13 @@ from dataclasses import asdict
 from ..tools.load_resources import resource
 from ..data_models.auth_dataclass import *
 from ..data_models import BaseResponse, ResponseMessage
-from ..utils.auth_utils import get_current_user, require_admin
+from ..utils.auth_utils import get_current_active_user, require_admin
 from ..loggers.logapp import logger
 
 router = APIRouter()
 
 @router.get("/profile", response_model=dict)
-async def get_profile(current_user: dict = Depends(get_current_user)):
+async def get_profile(current_user: dict = Depends(get_current_active_user)):
     """Get current user's profile"""
     try:
         return asdict(UserResponse(
@@ -31,7 +31,7 @@ async def get_profile(current_user: dict = Depends(get_current_user)):
 @router.put("/profile", response_model=dict)
 async def update_profile(
     request: UpdateProfileRequest,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_active_user)
 ):
     """Update current user's profile"""
     try:

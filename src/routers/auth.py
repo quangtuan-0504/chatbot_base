@@ -150,7 +150,7 @@ async def refresh_token(request: RefreshTokenRequest):
         )
 
 @router.post("/logout", response_model=dict)
-async def logout(current_user: dict = Depends(get_current_user)):
+async def logout(current_user: dict = Depends(get_current_active_user)):
     """Logout user (in a real implementation, you'd invalidate the token)"""
     try:
         # In a real implementation, you'd add the token to a blacklist
@@ -171,7 +171,7 @@ async def logout(current_user: dict = Depends(get_current_user)):
 @router.put("/reset-password", response_model=dict)
 async def reset_password(
     request: ResetPasswordRequest,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_active_user)
 ):
     """Reset user password"""
     try:

@@ -87,7 +87,16 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> Dict[str, Any
     
     return user
 
-async def require_admin(current_user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, Any]:
+async def get_current_active_user(current_user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, Any]:
+    """Get current active user - checks if user is active"""
+    if not current_user.get("is_active", False):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is deactivated"
+        )
+    return current_user
+
+async def require_admin(current_user: Dict[str, Any] = Depends(get_current_active_user)) -> Dict[str, Any]:
     """Require admin role"""
     if current_user.get("system_role") != "admin":
         raise HTTPException(
@@ -96,7 +105,7 @@ async def require_admin(current_user: Dict[str, Any] = Depends(get_current_user)
         )
     return current_user
 
-async def require_creator_or_admin(current_user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, Any]:
+async def require_creator_or_admin(current_user: Dict[str, Any] = Depends(get_current_active_user)) -> Dict[str, Any]:
     """Require creator or admin role"""
     if current_user.get("system_role") not in ["creator", "admin"]:
         raise HTTPException(

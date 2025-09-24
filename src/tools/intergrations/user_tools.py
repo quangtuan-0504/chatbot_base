@@ -4,7 +4,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__),'..','..'
 from helpers.mongodb.get_mongodb import MongoDBConnections
 from bson import ObjectId
 from src.utils.timezone_utils import get_gmt7_datetime_for_db
-from src.utils.auth_utils import hash_password, verify_password
+from passlib.context import CryptContext
 from loggers.logapp import logger
 import re
 
@@ -12,9 +12,19 @@ class UserTool:
     def __init__(self, mongodb: MongoDBConnections = None):
         self.mongodb = mongodb
         self.users_table = self.mongodb.USERS
+        # Password hashing context
+        self.pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
         # Create indexes for better performance
         self.users_table.create_index([("email", 1)], unique=True)
         self.users_table.create_index([("username", 1)], unique=True)
+
+    def _hash_password(self, password: str) -> str:
+        """Hash a password using passlib CryptContext"""
+        return self.pwd_context.hash(password)
+
+    def _verify_password(self, plain_password: str, hashed_password: str) -> bool:
+        """Verify a password against its hash using passlib CryptContext"""
+        return self.pwd_context.verify(plain_password, hashed_password)
 
     def create_user(self, email: str, password: str, username: str = None, name: str = None) -> dict:
         """Create a new user"""
@@ -45,7 +55,7 @@ class UserTool:
             "email": email,
             "username": username,
             "name": name,
-            "password_hash": hash_password(password),
+            "password_hash": self._hash_password(password),
             "system_role": "user",
             "is_active": True,
             "created_at": current_time,
@@ -82,7 +92,7 @@ class UserTool:
         if not user.get("is_active"):
             return None
 
-        if not verify_password(password, user["password_hash"]):
+        if not self._verify_password(password, user["password_hash"]):
             return None
 
         # Convert ObjectId to string and remove password hash
@@ -137,7 +147,7 @@ class UserTool:
                 {"_id": ObjectId(user_id)},
                 {
                     "$set": {
-                        "password_hash": hash_password(new_password),
+                        "password_hash": self._hash_password(new_password),
                         "updated_at": current_time
                     }
                 }
@@ -152,7 +162,7 @@ class UserTool:
         user = self.users_table.find_one({"email": email})
         if not user:
             return False
-        return verify_password(password, user["password_hash"])
+        return self._verify_password(password, user["password_hash"])
 
     def update_user_profile(self, user_id: str, email: str = None, name: str = None) -> dict:
         """Update user profile"""
@@ -265,7 +275,7 @@ class UserTool:
                 "email": email,
                 "username": username,
                 "name": name,
-                "password_hash": hash_password(password),
+                "password_hash": self._hash_password(password),
                 "system_role": "admin",
                 "is_active": True,
                 "created_at": current_time,

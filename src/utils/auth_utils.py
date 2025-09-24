@@ -9,7 +9,6 @@ import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__),'..')))
 from configs import settings
-from tools.load_resources import resource
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
@@ -55,7 +54,7 @@ def verify_token(token: str) -> Dict[str, Any]:
             detail="Token has expired",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    except jwt.JWTError:
+    except jwt.pyJWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
@@ -81,6 +80,8 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> Dict[str, Any
     except HTTPException:
         raise credentials_exception
     
+    # Import here to avoid circular import
+    from tools.load_resources import resource
     user = resource["user_tool"].get_user_by_email(email)
     if user is None:
         raise credentials_exception

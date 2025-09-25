@@ -95,9 +95,9 @@ class GroupResponse(BaseResponse):
 @dataclass
 class GroupListResponse(BaseResponse):
     data: List[GroupItem]
-    total: int
-    page: int
-    limit: int
+    total: int = 0
+    page: int =  1
+    limit: int = 10
 
 @dataclass
 class UserListInGroupResponse(BaseResponse):

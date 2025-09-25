@@ -116,3 +116,25 @@ async def require_creator_or_admin(current_user: Dict[str, Any] = Depends(get_cu
             detail="Creator or admin access required"
         )
     return current_user
+
+async def require_group_admin(group_id: str, current_user: Dict[str, Any] = Depends(get_current_active_user)) -> Dict[str, Any]:
+    """Require group admin role"""
+    from src.tools.load_resources import resource
+    
+    if not resource["group_tool"]._is_admin_gr(current_user["id"], group_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Group admin access required"
+        )
+    return current_user
+
+async def require_group_member(group_id: str, current_user: Dict[str, Any] = Depends(get_current_active_user)) -> Dict[str, Any]:
+    """Require group membership"""
+    from src.tools.load_resources import resource
+    
+    if not resource["group_tool"]._is_member_of_group(current_user["id"], group_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Group membership required"
+        )
+    return current_user

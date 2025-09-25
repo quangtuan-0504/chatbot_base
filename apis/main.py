@@ -13,6 +13,7 @@ from src.routers.documents import router as document_router
 from src.routers.collections import router as collection_router
 from src.routers.auth import router as auth_router
 from src.routers.users import router as user_router
+from src.routers.groups import router as group_router
 
 from loggers.logapp import logger
 from configs import settings
@@ -43,6 +44,7 @@ api_router = APIRouter(prefix="/api/v1")
 # Include routers
 api_router.include_router(auth_router, prefix="/auth", tags=["authentication"])
 api_router.include_router(user_router, prefix="/users", tags=["users"])
+api_router.include_router(group_router, prefix="/groups", tags=["groups"])
 api_router.include_router(chat_router, prefix="/chats", tags=["chats"])
 api_router.include_router(collection_router, prefix="/collections", tags=["collections"])
 api_router.include_router(document_router, prefix="/documents", tags=["documents"])

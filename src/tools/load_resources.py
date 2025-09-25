@@ -12,6 +12,7 @@ from tools.intergrations.collection_tools import CollectionTool
 from tools.intergrations.chat_tools import ChatTool
 from tools.intergrations.document_tools import DocumentTool
 from tools.intergrations.user_tools import UserTool
+from tools.intergrations.group_tools import GroupTool
 from tools.intergrations.minio_tools import ensure_bucket_exists
 from utils.get_list_model_by_provider import get_list_model_by_provider
 
@@ -34,6 +35,7 @@ def load_resource()-> Dict:
         resources["document_tool"] = DocumentTool(mongodb=mongodb)
         resources["chat_tool"] = ChatTool(mongodb=mongodb)
         resources["user_tool"] = UserTool(mongodb=mongodb)
+        resources["group_tool"] = GroupTool(mongodb=mongodb)
 
         # Create admin user if not exists
         try:

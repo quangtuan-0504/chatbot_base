@@ -62,8 +62,8 @@ def verify_token(token: str) -> Dict[str, Any]:
 
 async def get_current_user(request: Request, token: Annotated[str, Depends(oauth2_scheme)]) -> Dict[str, Any]:
     """Get current user from JWT token"""
-    print("Token:", token)  # Debugging line to print the token
-    print(request.headers)  # Debugging line to print request headers
+    # print("Token:", token)  # Debugging line to print the token
+    # print(request.headers)  # Debugging line to print request headers
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",

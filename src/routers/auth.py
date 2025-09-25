@@ -57,7 +57,7 @@ async def register(request: UserRegistrationRequest):
         )
 
 @router.post("/login", response_model=dict)
-async def login(form_data: OAuth2PasswordRequestForm = Depends()):
+async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
     """Authenticate user and return JWT tokens"""
     try:
         # Authenticate user
@@ -80,16 +80,14 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
         # Update last login
         resource["user_tool"].update_last_login(user["id"])
 
-        return asdict(LoginResponse(
-            code=200,
-            data=TokenData(
+        return asdict(
+            TokenData(
                 access_token=access_token,
                 refresh_token=refresh_token,
                 token_type="bearer",
                 user=UserItem.from_dict(user)
-            ),
-            message="Login successful"
-        ))
+            )
+        )
 
     except HTTPException:
         raise
@@ -126,17 +124,12 @@ async def refresh_token(request: RefreshTokenRequest):
         access_token = create_access_token(data={"sub": email})
         new_refresh_token = create_refresh_token(data={"sub": email})
 
-        return asdict(TokenRefreshResponse(
-            code=200,
-            data=TokenData(
-                access_token=access_token,
-                refresh_token=new_refresh_token,
-                token_type="bearer",
-                user=UserItem.from_dict(user)
-            ),
-            message="Token refreshed successfully"
+        return asdict(TokenData(
+            access_token=access_token,
+            refresh_token=new_refresh_token,
+            token_type="bearer",
+            user=UserItem.from_dict(user)
         ))
-
     except HTTPException:
         raise
     except Exception as e:

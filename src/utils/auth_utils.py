@@ -138,3 +138,59 @@ async def require_group_member(group_id: str, current_user: Dict[str, Any] = Dep
             detail="Group membership required"
         )
     return current_user
+
+async def require_collection_owner(collection_id: str, current_user: Dict[str, Any] = Depends(get_current_active_user)) -> Dict[str, Any]:
+    """Require collection owner role"""
+    from src.tools.load_resources import resource
+    
+    # Check if user is owner in USER_COLLECTION table
+    user_collection = resource["mongoDB"].USER_COLLECTION.find_one({
+        "user_id": current_user["id"],
+        "collection_id": collection_id,
+        "role": "owner"
+    })
+    
+    if not user_collection:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Collection owner access required"
+        )
+    return current_user
+
+async def require_collection_editor_or_owner(collection_id: str, current_user: Dict[str, Any] = Depends(get_current_active_user)) -> Dict[str, Any]:
+    """Require collection editor or owner role"""
+    from src.tools.load_resources import resource
+    
+    # Check if user has editor or owner role
+    user_collection = resource["mongoDB"].USER_COLLECTION.find_one({
+        "user_id": current_user["id"],
+        "collection_id": collection_id,
+        "role": {"$in": ["owner", "editor"]}
+    })
+    
+    if not user_collection:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Collection editor or owner access required"
+        )
+    return current_user
+
+async def require_collection_access(collection_id: str, current_user: Dict[str, Any] = Depends(get_current_active_user)) -> Dict[str, Any]:
+    """Require any level of collection access (owner, editor, or viewer)"""
+    from src.tools.load_resources import resource
+    
+    # Check if user has any access to collection
+    user_collection = resource["mongoDB"].USER_COLLECTION.find_one({
+        "user_id": current_user["id"],
+        "collection_id": collection_id
+    })
+    
+    # Also check if collection is public
+    collection = resource["collection_tool"].get_collection_by_id(collection_id)
+    
+    if not user_collection and not collection.get("is_public", False):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Collection access required"
+        )
+    return current_user

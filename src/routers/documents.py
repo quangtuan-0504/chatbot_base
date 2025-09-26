@@ -1,4 +1,4 @@
-from fastapi import HTTPException, File, Form, UploadFile , APIRouter
+from fastapi import HTTPException, File, Form, UploadFile , APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from fastapi.responses import JSONResponse
 from typing import Optional
@@ -10,19 +10,29 @@ from ..tools.load_resources import resource
 from ..configs import settings
 from ..loggers.logapp import logger
 from ..data_models import *
+from src.utils.auth_utils import (
+    get_current_active_user, 
+    require_collection_editor_or_owner, 
+    require_collection_access
+)
 
 router = APIRouter()
 
-@router.post("/add-document/{userId}")
-async def add_document(userId:str,
+@router.post("/add-document")
+async def add_document(
     file: UploadFile = File(...),
     collection_id: str = Form(...),
     description: str|None = Form(None),
     file_type: Optional[str] = Form(None), 
-    file_name: Optional[str] = Form(None), # to user change file name if them want
+    file_name: Optional[str] = Form(None),
+    current_user: dict = Depends(get_current_active_user)
 ):
     logger.debug(f"File upload request: {file.filename}, collectionId: {collection_id}, fileType: {file_type}, fileName: {file_name}")
+    
     try:
+        # Check if user has editor or owner access to collection
+        await require_collection_editor_or_owner(collection_id, current_user)
+
         if file.filename == '':
             return JSONResponse(
                 content=asdict(BaseResponse(
@@ -83,10 +93,10 @@ async def add_document(userId:str,
             original_file_name=file_name,
             minio_stored_file_name=temp_name,
             file_path=temp_path,  # path in minIO
-            user_id=userId,
+            user_id=current_user["id"],
             collection_id=collection_id,
             file_type=file_type,
-            description= description
+            description=description
         )
 
         # Increment document count in collection
@@ -97,7 +107,7 @@ async def add_document(userId:str,
         return asdict(FileResponse(
             code=200,
             data=file_item,
-            message=ResponseMessage.UPDATE_SUCCESS  # TODO
+            message=ResponseMessage.UPDATE_SUCCESS
         ))
 
     except Exception as e:
@@ -109,10 +119,11 @@ async def add_document(userId:str,
             )),
             status_code=500
         )
-@router.post("/get-list-docs-collection/{userId}")
+
+@router.post("/get-list-docs-collection")
 async def get_documents_of_collection(
-    userId: str , 
-    request : FilesQueryRequest
+    request: FilesQueryRequest,
+    current_user: dict = Depends(get_current_active_user)
 ):  
     try:
         if not request.collection_id:
@@ -124,9 +135,10 @@ async def get_documents_of_collection(
                 status_code=400
             )
 
-        files_data = resource['document_tool'].get_files_of_collection(
-            query=request
-        )
+        # Check if user has access to collection
+        await require_collection_access(request.collection_id, current_user)
+
+        files_data = resource['document_tool'].get_files_of_collection(query=request)
         file_items = [FileItem.from_dict(file).asdict() for file in files_data]
         if not file_items:
             file_items = []
@@ -149,11 +161,11 @@ async def get_documents_of_collection(
             status_code=500
         )
 
-@router.put("/delete-file/{userId}")
-async def delete_file(userId: str,
-    request: DeleteFileRequest
-    ):
-
+@router.post("/delete-file")
+async def delete_file(
+    request: DeleteFileRequest,
+    current_user: dict = Depends(get_current_active_user)
+):
     try:
         if not request.file_id:
             return JSONResponse(
@@ -163,6 +175,10 @@ async def delete_file(userId: str,
                 )),
                 status_code=400
             )
+
+        # Check if user has editor or owner access to collection
+        await require_collection_editor_or_owner(request.collection_id, current_user)
+
         try:
             response_data = resource['document_tool'].remove_file(
                 file_id=request.file_id,
@@ -191,7 +207,7 @@ async def delete_file(userId: str,
                 status_code=404
             )
     except Exception as e:
-        logger .error(f"Remove file error: {str(e)}")
+        logger.error(f"Remove file error: {str(e)}")
         return JSONResponse(
             content=asdict(BaseResponse(
                 code=500,
@@ -199,11 +215,12 @@ async def delete_file(userId: str,
             )),
             status_code=500
         )
-@router.post('/download-file/{userId}')
+
+@router.post('/download-file')
 async def download_file(
-    userId : str,
     collection_id: str = Form(...),
-    file_id : str = Form(...)
+    file_id: str = Form(...),
+    current_user: dict = Depends(get_current_active_user)
 ):
     try:
         if not file_id or not collection_id:
@@ -214,6 +231,10 @@ async def download_file(
                 )),
                 status_code=400
             )
+
+        # Check if user has access to collection
+        await require_collection_access(collection_id, current_user)
+
         # First check if file exists and get its collection
         file_data = resource['document_tool'].get_file(file_id)
         if not file_data:
@@ -224,12 +245,9 @@ async def download_file(
                 )),
                 status_code=404
             )
-        file_path_in_minio = file_data['file_path']
 
-        response = resource['document_tool'].download_file(
-            file_path = file_path_in_minio
-        )
-        # response = minio_client.get_object(bucket_name, file_path)
+        file_path_in_minio = file_data['file_path']
+        response = resource['document_tool'].download_file(file_path=file_path_in_minio)
 
         # Trả về file dưới dạng StreamingResponse
         return StreamingResponse(

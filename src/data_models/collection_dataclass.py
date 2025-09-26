@@ -105,4 +105,22 @@ class CollectionListResponse(BaseResponse):
 @dataclass
 class CollectionResponse(BaseResponse):
     data: Optional[CollectionItem] = None
- 
+
+class ShareCollectionRequest(BaseModel):
+    collection_id: str
+    user_email: str
+    role: str = "viewer"  # "editor" or "viewer"
+
+class ShareCollectionToGroupRequest(BaseModel):
+    collection_id: str
+    group_id: str
+    role: str = "viewer"  # "editor" or "viewer"
+
+class GetCollectionCommunityRequest(BaseModel):
+    search_name: Optional[str] = None
+
+class ViewAllCollectionsRequest(BaseModel):
+    collection_name: Optional[str] = None
+    status: Optional[str] = None
+    created_after: Optional[str] = None
+    created_before: Optional[str] = None

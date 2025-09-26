@@ -2,45 +2,49 @@ from fastapi import APIRouter, Depends, HTTPException , Form
 from fastapi.responses import JSONResponse
 from dataclasses import asdict
 from ..tools.load_resources import resource
-from src.data_models.collection_dataclass import CreateCollectionRequest
+from src.data_models.collection_dataclass import (
+    CreateCollectionRequest, RemoveCollectionRequest, ModifyCollectionRequest,
+    GetCollectionsRequest, ShareCollectionRequest, ShareCollectionToGroupRequest,
+    GetCollectionCommunityRequest, ViewAllCollectionsRequest
+)
+from src.utils.auth_utils import (
+    get_current_active_user, require_creator_or_admin, require_admin,
+    require_collection_owner, require_collection_access
+)
 from ..loggers.logapp import logger
 from ..data_models import *
 
 
 router = APIRouter()
-@router.post("/new-collection/{userId}")
-async def create_new_collection(userId: str , request: CreateCollectionRequest):
+
+@router.post("/new-collection")
+async def create_new_collection(
+    request: CreateCollectionRequest,
+    current_user: dict = Depends(require_creator_or_admin)
+):
     logger.info(f"Create collection request: {request}")
 
     try:
-        # Validate required fields for create
         if not request.collection_name:
             return JSONResponse(
-                content=asdict(
-                    BaseResponse(
-                        code=400,
-                        message=ResponseMessage.missing_field('collection_name')
-                    )
-                ),
+                content=asdict(BaseResponse(
+                    code=400,
+                    message=ResponseMessage.missing_field('collection_name')
+                )),
                 status_code=400
             )
-        collection_name = request.collection_name
-        description = request.description
-        status = request.status
-        tags = request.tags
-        is_public = request.is_public
-        is_hidden = request.is_hidden
 
         response_data = resource["collection_tool"].create_collection(
             indexing_milvus=resource["indexing"],
-            collection_name=collection_name,
-            user_id=userId,
-            status=status,
-            description=description,
-            tags=tags,
-            is_public=is_public,
-            is_hidden=is_hidden
+            collection_name=request.collection_name,
+            user_id=current_user["id"],
+            status=request.status or "active",
+            description=request.description,
+            tags=request.tags,
+            is_public=request.is_public or False,
+            is_hidden=request.is_hidden or False
         )
+        
         collection_item = CollectionItem.from_dict(response_data)
         return asdict(CollectionResponse(
             code=200,
@@ -49,7 +53,6 @@ async def create_new_collection(userId: str , request: CreateCollectionRequest):
         ))
     except Exception as e:
         logger.error(f"Failed to create collection: {str(e)}")
-        # raise HTTPException(status_code=500, detail="Failed to create collection")
         return JSONResponse(
             content=asdict(BaseResponse(
                 code=500,
@@ -57,23 +60,16 @@ async def create_new_collection(userId: str , request: CreateCollectionRequest):
             )),
             status_code=500
         )
-    
+
 @router.post('/modify-collection')
 async def modify_collection(
     request: ModifyCollectionRequest,
+    current_user: dict = Depends(get_current_active_user)
 ):
-    """Modify an existing collection. Can change name and/or group assignment."""
+    """Modify an existing collection. Owner can change name, description, visibility settings."""
     logger.debug(f"Modify collection request: {request}")
+    
     try:
-        if not request:
-            return JSONResponse(
-                content=asdict(BaseResponse(
-                    code=400,
-                    message=ResponseMessage.missing_field('request data')
-                )),
-                status_code=400
-            )
-
         if not request.collection_id:
             return JSONResponse(
                 content=asdict(BaseResponse(
@@ -83,32 +79,34 @@ async def modify_collection(
                 status_code=400
             )
 
-        response_data = None
+        # Check if user is owner
+        await require_collection_owner(request.collection_id, current_user)
 
-        # Handle collection name change
+        # Prepare updates
+        updates = {}
         if request.collection_name:
-            try:
-                response_data = resource['collection_tool'].change_collection_name(
-                    collection_id=request.collection_id,
-                    collection_name=request.collection_name
-                )
-                logger.info(f"Collection name changed: {request.collection_id} -> {request.collection_name}")
-            except ValueError as ve:
-                return JSONResponse(
-                    content=asdict(BaseResponse(
-                        code=404,
-                        message=str(ve)
-                    )),
-                    status_code=404
-                )
+            updates["collection_name"] = request.collection_name
+        if request.is_public is not None:
+            updates["is_public"] = request.is_public
+        if request.is_hidden is not None:
+            updates["is_hidden"] = request.is_hidden
+
+        response_data = resource['collection_tool'].update_collection_settings(
+            collection_id=request.collection_id,
+            **updates
+        )
 
         collection_item = CollectionItem.from_dict(response_data)
-
         return asdict(CollectionResponse(
             code=200,
             data=collection_item,
             message=ResponseMessage.UPDATE_SUCCESS
         ))
+    except ValueError as ve:
+        return JSONResponse(
+            content=asdict(BaseResponse(code=404, message=str(ve))),
+            status_code=404
+        )
     except Exception as e:
         logger.error(f"Modify collection error: {str(e)}")
         return JSONResponse(
@@ -119,8 +117,205 @@ async def modify_collection(
             status_code=500
         )
 
-@router.put("/delete-collection/{userId}")
-async def delete_collection(userId: str, request: RemoveCollectionRequest):
+@router.post("/get-list-collection-you-created")
+async def get_collections_you_created(
+    current_user: dict = Depends(get_current_active_user)
+):
+    """Get collections created by current user"""
+    try:
+        collections_data = resource['collection_tool'].get_collections_created_by_user(
+            user_id=current_user["id"]
+        )
+
+        collection_items = [CollectionItem.from_dict(collection) for collection in collections_data]
+        return asdict(CollectionListResponse(
+            data=collection_items,
+            total=len(collection_items)
+        ))
+
+    except Exception as e:
+        logger.error(f"Get created collections error: {str(e)}")
+        return JSONResponse(
+            content=asdict(BaseResponse(
+                code=500,
+                message=ResponseMessage.error_occurred(e)
+            )),
+            status_code=500
+        )
+
+@router.post("/get-list-collection-shared-you")
+async def get_collections_shared_with_you(
+    current_user: dict = Depends(get_current_active_user)
+):
+    """Get collections shared with current user (editor/viewer role)"""
+    try:
+        collections_data = resource['collection_tool'].get_collections_shared_with_user(
+            user_id=current_user["id"],
+            roles=["editor", "viewer"]
+        )
+
+        collection_items = [CollectionItem.from_dict(collection) for collection in collections_data]
+        return asdict(CollectionListResponse(
+            data=collection_items,
+            total=len(collection_items)
+        ))
+
+    except Exception as e:
+        logger.error(f"Get shared collections error: {str(e)}")
+        return JSONResponse(
+            content=asdict(BaseResponse(
+                code=500,
+                message=ResponseMessage.error_occurred(e)
+            )),
+            status_code=500
+        )
+
+@router.post("/get-list-collection-community")
+async def get_community_collections(
+    request: GetCollectionCommunityRequest,
+    current_user: dict = Depends(get_current_active_user)
+):
+    """Get public collections that are not hidden"""
+    try:
+        collections_data = resource['collection_tool'].get_community_collections(
+            search_name=request.search_name
+        )
+
+        collection_items = [CollectionItem.from_dict(collection) for collection in collections_data]
+        return asdict(CollectionListResponse(
+            data=collection_items,
+            total=len(collection_items)
+        ))
+
+    except Exception as e:
+        logger.error(f"Get community collections error: {str(e)}")
+        return JSONResponse(
+            content=asdict(BaseResponse(
+                code=500,
+                message=ResponseMessage.error_occurred(e)
+            )),
+            status_code=500
+        )
+
+@router.post("/view-all-collections")
+async def view_all_collections(
+    request: ViewAllCollectionsRequest,
+    current_user: dict = Depends(require_admin)
+):
+    """Admin endpoint to view all collections"""
+    try:
+        filters = {}
+        if request.status:
+            filters["status"] = request.status
+        if request.created_after:
+            filters["created_at"] = {"$gte": request.created_after}
+        if request.created_before:
+            filters["created_at"] = {"$lte": request.created_before}
+
+        collections_data = resource['collection_tool'].get_all_collections_admin(
+            collection_name=request.collection_name,
+            **filters
+        )
+
+        collection_items = [CollectionItem.from_dict(collection) for collection in collections_data]
+        return asdict(CollectionListResponse(
+            data=collection_items,
+            total=len(collection_items)
+        ))
+
+    except Exception as e:
+        logger.error(f"Admin view all collections error: {str(e)}")
+        return JSONResponse(
+            content=asdict(BaseResponse(
+                code=500,
+                message=ResponseMessage.error_occurred(e)
+            )),
+            status_code=500
+        )
+
+@router.post("/share")
+async def share_collection_with_user(
+    request: ShareCollectionRequest,
+    current_user: dict = Depends(get_current_active_user)
+):
+    """Share collection with a specific user via email"""
+    try:
+        # Check if user is owner
+        await require_collection_owner(request.collection_id, current_user)
+
+        result = resource['collection_tool'].share_collection_with_user(
+            collection_id=request.collection_id,
+            user_email=request.user_email,
+            role=request.role,
+            assigned_by=current_user["id"]
+        )
+
+        return asdict(BaseResponse(
+            code=200,
+            message=f"Collection shared successfully. Action: {result['action']}"
+        ))
+
+    except ValueError as ve:
+        return JSONResponse(
+            content=asdict(BaseResponse(code=404, message=str(ve))),
+            status_code=404
+        )
+    except Exception as e:
+        logger.error(f"Share collection error: {str(e)}")
+        return JSONResponse(
+            content=asdict(BaseResponse(
+                code=500,
+                message=ResponseMessage.error_occurred(e)
+            )),
+            status_code=500
+        )
+
+@router.post("/shares")
+async def share_collection_with_group(
+    request: ShareCollectionToGroupRequest,
+    current_user: dict = Depends(get_current_active_user)
+):
+    """Share collection with all members of a group"""
+    try:
+        # Check if user is owner
+        await require_collection_owner(request.collection_id, current_user)
+
+        results = resource['collection_tool'].share_collection_with_group(
+            collection_id=request.collection_id,
+            group_id=request.group_id,
+            role=request.role,
+            assigned_by=current_user["id"]
+        )
+
+        created_count = sum(1 for r in results if r["action"] == "created")
+        updated_count = sum(1 for r in results if r["action"] == "updated")
+        existing_count = sum(1 for r in results if r["action"] == "already_exists")
+
+        return asdict(BaseResponse(
+            code=200,
+            message=f"Collection shared with group. Created: {created_count}, Updated: {updated_count}, Already exists: {existing_count}"
+        ))
+
+    except ValueError as ve:
+        return JSONResponse(
+            content=asdict(BaseResponse(code=404, message=str(ve))),
+            status_code=404
+        )
+    except Exception as e:
+        logger.error(f"Share collection with group error: {str(e)}")
+        return JSONResponse(
+            content=asdict(BaseResponse(
+                code=500,
+                message=ResponseMessage.error_occurred(e)
+            )),
+            status_code=500
+        )
+
+@router.post("/delete-collection")
+async def delete_collection(
+    request: RemoveCollectionRequest,
+    current_user: dict = Depends(get_current_active_user)
+):
     logger.info(f"Delete collection request: {request}")
     try: 
         if not request.collection_id:
@@ -131,34 +326,36 @@ async def delete_collection(userId: str, request: RemoveCollectionRequest):
                 )),
                 status_code=400
             )
-        try:
-            response_data = resource['collection_tool'].remove_collection(
-                indexing_milvus=resource['indexing'],
-                collection_id=request.collection_id,
-                user_id=userId
-                # role = ""
-            )
-            return asdict(CollectionResponse(
-                code=200,
-                data=CollectionItem.from_dict(response_data) if response_data else None,
-                message=ResponseMessage.DELETE_SUCCESS
-            ))
+        
+        # Check if user is owner
+        await require_collection_owner(request.collection_id, current_user)
 
-        except ValueError as ve:
-            return JSONResponse(
-                content=asdict(BaseResponse(
-                    code=404,
-                    message=str(ve)
-                )),
-                status_code=404
-            )
+        response_data = resource['collection_tool'].remove_collection(
+            indexing_milvus=resource['indexing'],
+            collection_id=request.collection_id,
+            user_id=current_user["id"],
+            role="owner"
+        )
+        
+        return asdict(CollectionResponse(
+            code=200,
+            data=CollectionItem.from_dict(response_data) if response_data else None,
+            message=ResponseMessage.DELETE_SUCCESS
+        ))
 
-        except RuntimeError as re:
-            logger.error(f"Remove collection: {str(re)}")
-            raise RuntimeError(f"Failed to remove collection: {str(re)}")
-
+    except ValueError as ve:
+        return JSONResponse(
+            content=asdict(BaseResponse(code=404, message=str(ve))),
+            status_code=404
+        )
+    except RuntimeError as re:
+        logger.error(f"Remove collection: {str(re)}")
+        return JSONResponse(
+            content=asdict(BaseResponse(code=500, message=str(re))),
+            status_code=500
+        )
     except Exception as e:
-        logger.error(f"Remove collection error: {str(e)}\n")
+        logger.error(f"Remove collection error: {str(e)}")
         return JSONResponse(
             content=asdict(BaseResponse(
                 code=500,
@@ -166,75 +363,3 @@ async def delete_collection(userId: str, request: RemoveCollectionRequest):
             )),
             status_code=500
         )
-
-@router.post("/get-list-collections/{userId}")
-async def get_collections_of_user(userId: str, request: GetCollectionsRequest):
-    logger.debug(f"Get all collections for user:{userId}")
-    try:
-
-        collections_data = resource['collection_tool'].get_collections_by_userid(
-            user_id=userId,
-            roles=request.roles
-        )
-
-        collection_items = [CollectionItem.from_dict(collection) for collection in collections_data]
-        response = CollectionListResponse(
-            data=collection_items,
-            total=len(collection_items)
-        )
-
-        return asdict(response)
-
-    except Exception as e:
-        logger.error(f"Get all collections error for user: {str(e)}")
-        return JSONResponse(
-            content=asdict(BaseResponse(
-                code=500,
-                message=ResponseMessage.error_occurred(e)
-            )),
-            status_code=500
-        )
-
-from src.data_models.collection_dataclass import request_addUsertoCollection
-
-# DATABASE User, department ví dụ
-data_user = [{"userID": "0", "department" : "PTUD" , "email" : "abc0@namabank.com.vn" },
-             {"userID": "1", "department" : "Phòng quản lý dịch vụ", "email" : "abc1@namabank.com.vn" },
-             {"userID": "2", "department" : "Phòng an ninh thông tin", "email" : "abc2@namabank.com.vn" },
-             {"userID": "3", "department" : "PTUD", "email" : "abc3@namabank.com.vn" },
-             {"userID": "4", "department" : "Phòng kế toán" , "email" : "abc4@namabank.com.vn"},
-             {"userID": "5", "department" : "Phòng truyền thông", "email" : "abc5@namabank.com.vn" },
-             {"userID": "6", "department" : "PTUD", "email" : "abc6@namabank.com.vn" },
-             {"userID": "7", "department" : "Phòng truyền thông", "email" : "abc7@namabank.com.vn" },
-             {"userID": "8", "department" : "PTUD" , "email" : "abc8@namabank.com.vn"},
-             {"userID": "9", "department" : "Phòng kế toán", "email" : "abc9@namabank.com.vn" },
-             {"userID": "10", "department" : "Phòng kế toán" , "email" : "abc10@namabank.com.vn"},]
-@router.post("/add-users-to-collection/{userId}")
-async def addUserCollection(userId : str, request : request_addUsertoCollection):
-    collectionId = request.collection_id
-    email = request.user_email
-    department = request.department_name
-    print("abc")
-    print(collectionId)
-
-    db = resource["mongoDB"]
-    user_collection = db["user_collections"] 
-    if request.user_email:
-        # Tìm user thông qua email
-        # add user_id,collection_id vào bảng user_collection
-        for user in data_user:
-            if email == user["email"]:
-                user_collection.insert_one({"userId": user["userID"],"collection_id":collectionId })
-
-        
-        
-    if request.department_name:
-
-        # Lấy danh sách nhân viên thuộc phòng được add
-        # add bộ user_id,collection_id của all user trong phòng ban này vào bẳng user_collection
-        # sau này sửa thành find many và insert many sau
-        for user in data_user:
-            if department == user["department"]:
-                user_collection.insert_one({"userId": user["userId"], "collection_id":collectionId})
-        
-    return "successfully!"

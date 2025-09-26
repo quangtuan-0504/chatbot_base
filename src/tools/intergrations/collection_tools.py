@@ -455,3 +455,170 @@ class CollectionTool:
         except Exception as e:
             logger.error(f"Error decrementing collection size: {str(e)}")
             return False
+    def get_collections_created_by_user(self, user_id: str):
+        """Get collections created by specific user"""
+        collections = self.collections_table.find({"user_id_create": user_id})
+        return list(collections)
+
+    def get_collections_shared_with_user(self, user_id: str, roles: list = None):
+        """Get collections shared with user (excluding owned collections)"""
+        if roles is None:
+            roles = ["editor", "viewer"]
+        
+        # Find user_collections where user has editor/viewer role
+        user_collections = self.user_collection_table.find({
+            "user_id": user_id,
+            "role": {"$in": roles}
+        })
+        
+        collections = []
+        for user_collection in user_collections:
+            collection = self.collections_table.find_one(
+                {"_id": ObjectId(user_collection["collection_id"])}
+            )
+            if collection:
+                collection["role"] = user_collection["role"]  # Add role info
+                collections.append(collection)
+        
+        return collections
+
+    def get_community_collections(self, search_name: str = None):
+        """Get public collections that are not hidden"""
+        query = {
+            "is_public": True,
+            "is_hidden": False,
+            "status": "active"
+        }
+        
+        if search_name:
+            query["collection_name"] = {"$regex": search_name, "$options": "i"}
+        
+        collections = self.collections_table.find(query)
+        return list(collections)
+
+    def get_all_collections_admin(self, collection_name: str = None, **filters):
+        """Get all collections (admin view) with optional filters"""
+        query = {}
+        
+        if collection_name:
+            query["collection_name"] = {"$regex": collection_name, "$options": "i"}
+        
+        # Add other filters
+        for key, value in filters.items():
+            if value is not None:
+                query[key] = value
+        
+        collections = self.collections_table.find(query).sort("created_at", -1)
+        return list(collections)
+
+    def share_collection_with_user(self, collection_id: str, user_email: str, role: str, assigned_by: str):
+        """Share collection with a specific user"""
+        # Get user by email
+        from src.tools.load_resources import resource
+        user = resource["user_tool"].get_user_by_email(user_email)
+        
+        if not user:
+            raise ValueError(f"User with email {user_email} not found")
+        
+        user_id = user["id"]
+        
+        # Check if user already has access to this collection
+        existing = self.user_collection_table.find_one({
+            "user_id": user_id,
+            "collection_id": collection_id
+        })
+        
+        if existing:
+            # Update role if different
+            if existing["role"] != role:
+                self.user_collection_table.update_one(
+                    {"_id": existing["_id"]},
+                    {
+                        "$set": {
+                            "role": role,
+                            "assigned_by": assigned_by,
+                            "assigned_at": get_gmt7_datetime_for_db().isoformat()
+                        }
+                    }
+                )
+                return {"action": "updated", "user_id": user_id, "role": role}
+            else:
+                return {"action": "already_exists", "user_id": user_id, "role": role}
+        
+        # Add new user collection relationship
+        self.user_collection_table.insert_one({
+            "user_id": user_id,
+            "collection_id": collection_id,
+            "role": role,
+            "assigned_by": assigned_by,
+            "assigned_at": get_gmt7_datetime_for_db().isoformat()
+        })
+        
+        return {"action": "created", "user_id": user_id, "role": role}
+
+    def share_collection_with_group(self, collection_id: str, group_id: str, role: str, assigned_by: str):
+        """Share collection with all members of a group"""
+        # Get all group members
+        from src.tools.load_resources import resource
+        group_members = resource["group_tool"].get_group_members(group_id)
+        
+        results = []
+        for member in group_members:
+            user_id = member["user_id"]
+            
+            # Check if user already has access
+            existing = self.user_collection_table.find_one({
+                "user_id": user_id,
+                "collection_id": collection_id
+            })
+            
+            if existing:
+                if existing["role"] != role:
+                    self.user_collection_table.update_one(
+                        {"_id": existing["_id"]},
+                        {
+                            "$set": {
+                                "role": role,
+                                "assigned_by": assigned_by,
+                                "assigned_at": get_gmt7_datetime_for_db().isoformat()
+                            }
+                        }
+                    )
+                    results.append({"action": "updated", "user_id": user_id, "role": role})
+                else:
+                    results.append({"action": "already_exists", "user_id": user_id, "role": role})
+            else:
+                self.user_collection_table.insert_one({
+                    "user_id": user_id,
+                    "collection_id": collection_id,
+                    "role": role,
+                    "assigned_by": assigned_by,
+                    "assigned_at": get_gmt7_datetime_for_db().isoformat()
+                })
+                results.append({"action": "created", "user_id": user_id, "role": role})
+        
+        return results
+
+    def update_collection_settings(self, collection_id: str, **updates):
+        """Update collection settings like is_public, is_hidden, description"""
+        allowed_fields = ["collection_name", "description", "is_public", "is_hidden", "status", "tags"]
+        
+        update_data = {}
+        for field, value in updates.items():
+            if field in allowed_fields and value is not None:
+                update_data[field] = value
+        
+        if not update_data:
+            raise ValueError("No valid fields to update")
+        
+        update_data["updated_at"] = get_gmt7_datetime_for_db().isoformat()
+        
+        result = self.collections_table.update_one(
+            {"_id": ObjectId(collection_id)},
+            {"$set": update_data}
+        )
+        
+        if result.matched_count == 0:
+            raise ValueError(f"Collection with ID {collection_id} not found")
+        
+        return self.get_collection_by_id(collection_id)

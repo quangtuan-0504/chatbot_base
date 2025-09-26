@@ -12,13 +12,8 @@ __all__ = [
     'DeleteChatRequest', 'RenameChatRequest'
 ]
 # thêm class vào __all__ mới import * ở __init__.py được
-class GetChatHistoryRequest(BaseModel):
-    user_id: str|None
-class DeleteChatRequest(BaseModel):
-    user_id: str|None
 class RenameChatRequest(BaseModel):
     chat_id: str
-    user_id: str
     new_title: str
 @dataclass
 class ChatListItem:

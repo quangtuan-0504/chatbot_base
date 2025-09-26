@@ -1,17 +1,20 @@
-from fastapi import APIRouter, HTTPException, WebSocket
-from ..tools.load_resources import resource, provider_model
+from fastapi import APIRouter, HTTPException, WebSocket, Depends
+from typing import Annotated
 import json
 from fastapi.responses import JSONResponse
 from dataclasses import asdict
+from ..tools.load_resources import resource, provider_model
 from ..data_models import *
+from ..utils.auth_utils import get_current_active_user
 
 router = APIRouter()
 
-@router.get("/list-chats/{userId}")
-async def get_list_chat_of_user(userId):
+@router.get("/list-chats")
+async def get_list_chat_of_user(current_user: dict = Depends(get_current_active_user)):
     try:
+        user_id = current_user['id']
         # Query MongoDB for user's chat history
-        chats = resource['chat_tool'].get_list_chat(userId)
+        chats = resource['chat_tool'].get_list_chat(user_id)
         chat_list = [ChatListItem.from_dict(chat) for chat in chats]
         chat_list = sorted(chat_list, key=lambda x: x.update_at, reverse=True)
 
@@ -32,7 +35,7 @@ async def get_list_chat_of_user(userId):
         )
 
 @router.post("/chat-history/{chatId}")
-async def get_chat_history(chatId: str, request: GetChatHistoryRequest):
+async def get_chat_history(chatId: str, current_user: dict = Depends(get_current_active_user)):
     try:
         if not chatId:
             return JSONResponse(
@@ -42,7 +45,7 @@ async def get_chat_history(chatId: str, request: GetChatHistoryRequest):
                 )),
                 status_code=400
             )
-        chat = resource['chat_tool'].get_chat(chat_id=chatId,user_id=request.user_id)
+        chat = resource['chat_tool'].get_chat(chat_id=chatId,user_id=current_user['id'])
         history = chat['history']
         if  len(history) >=50:
             history = history[-50:]
@@ -63,7 +66,7 @@ async def get_chat_history(chatId: str, request: GetChatHistoryRequest):
         )
 
 @router.post("/delete-chat/{chatId}")
-async def delete_chat(chatId: str, request: DeleteChatRequest):
+async def delete_chat(chatId: str, current_user = Annotated[dict,Depends(get_current_active_user)]):
     """Delete a chat for the authenticated user."""
     try:
         if not chatId:
@@ -76,7 +79,7 @@ async def delete_chat(chatId: str, request: DeleteChatRequest):
             )
 
         # Attempt to delete the chat
-        success = resource['chat_tool'].delete_chat(chat_id=chatId, user_id=request.user_id)
+        success = resource['chat_tool'].delete_chat(chat_id=chatId, user_id=current_user['id'])
 
         if not success:
             return JSONResponse(
@@ -101,7 +104,7 @@ async def delete_chat(chatId: str, request: DeleteChatRequest):
         )
 
 @router.put("/rename-chat")
-async def rename_chat(request: RenameChatRequest):
+async def rename_chat(request: RenameChatRequest, current_user: dict = Depends(get_current_active_user)):
     """Rename a chat for the authenticated user."""
     try:
         # Validate required parameters
@@ -120,7 +123,7 @@ async def rename_chat(request: RenameChatRequest):
                 status_code=400
             )
         # Attempt to rename the chat
-        success = resource['chat_tool'].rename_chat(request.chat_id, request.user_id, request.new_title)
+        success = resource['chat_tool'].rename_chat(request.chat_id, current_user['id'], request.new_title)
 
         if not success:
             return JSONResponse(
@@ -146,7 +149,7 @@ async def rename_chat(request: RenameChatRequest):
 
 
 @router.websocket("/chat-stream")
-async def stream_chat_websocket(websocket: WebSocket):
+async def stream_chat_websocket(websocket: WebSocket, current_user: Annotated[dict, Depends(get_current_active_user)]):
     await websocket.accept()
     try:
         # Nhận và kiểm tra dữ liệu từ client
@@ -159,14 +162,14 @@ async def stream_chat_websocket(websocket: WebSocket):
             raise HTTPException(status_code=400, detail="Invalid JSON format")
 
         # Kiểm tra các trường bắt buộc
-        required_fields = ["userId", "question", "modelName"]
+        required_fields = ["question", "modelName"]
         for field in required_fields:
             if field not in request or request[field] is None:
                 await websocket.send_text(json.dumps({"type": "error", "data": f"Missing or invalid field: {field}"}))
                 await websocket.close()
                 raise HTTPException(status_code=400, detail=f"Missing or invalid field: {field}")
 
-        user_id = request["userId"]
+        user_id = current_user.get('id')
         question = request["question"]
         chat_id = request.get("chatId")
         file_ids = request.get("fileIds")

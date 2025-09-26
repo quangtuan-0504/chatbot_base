@@ -8,8 +8,7 @@ from pydantic import BaseModel
 __all__ = [
     'ChatListItem', 'ChatListResponse', 'ChatHistory', 
     'ChatHistoryResponse', 'ChatRequestPayload', 'ChatRequest', 
-    'ChatResponsePayload', 'ChatResponse','GetChatHistoryRequest', 
-    'DeleteChatRequest', 'RenameChatRequest'
+    'ChatResponsePayload', 'ChatResponse', 'RenameChatRequest'
 ]
 # thêm class vào __all__ mới import * ở __init__.py được
 class RenameChatRequest(BaseModel):

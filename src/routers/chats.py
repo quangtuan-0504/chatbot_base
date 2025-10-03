@@ -267,7 +267,7 @@ async def stream_chat_websocket(websocket: WebSocket, current_user: Annotated[di
                 raise HTTPException(status_code=404, detail="Chat not found or not updated")
 
         # Gửi chat_id đến client
-        await websocket.send_text(json.dumps({"type": "chatId", "data": chat_id}))
+        await websocket.send_text(json.dumps({"type": "chat_id", "data": chat_id}))
 
         # Đóng kết nối WebSocket
         await websocket.close()

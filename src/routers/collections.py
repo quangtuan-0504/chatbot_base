@@ -197,7 +197,7 @@ async def get_community_collections(
             status_code=500
         )
 
-@router.post("/view-all-collections")
+@router.post("/admin/view-all-collections")
 async def view_all_collections(
     request: ViewAllCollectionsRequest,
     current_user: dict = Depends(require_admin)

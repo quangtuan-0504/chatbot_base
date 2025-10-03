@@ -3,10 +3,10 @@
 ## Overview
 This document provides comprehensive API documentation for the Chatbot application. The API follows REST principles and uses JWT tokens for authentication.
 
-**Base URL:** `http://localhost:8000` (adjust according to your deployment)
+**Base URL:** `http://127.0.0.1:8050/api/v1` (adjust according to your deployment)
 
 ## Authentication
-Most endpoints require JWT authentication. Include the token in the Authorization header:
+All endpoints except `/auth/register` and `/auth/login` require JWT authentication. Include the token in the Authorization header:
 ```
 Authorization: Bearer <your_jwt_token>
 ```
@@ -177,6 +177,7 @@ Update current user's profile.
   "name": "New Name" // optional
 }
 ```
+**Response:** Same as **GET** /users/profile response
 
 ### POST /users/admin/view-all-users
 Get all users (admin only).
@@ -229,6 +230,7 @@ Grant system role to user (admin only).
   "system_role": "creator" // "admin" | "creator" | "user"
 }
 ```
+**Response:** Same as **GET** /users/profile response
 
 ---
 
@@ -283,6 +285,7 @@ Modify group information.
   "is_hidden": false // optional
 }
 ```
+**Response:** Same as **POST** /groups/create-group response
 
 ### POST /groups/get-list-group-you-created
 Get groups created by current user.
@@ -310,16 +313,36 @@ Get groups created by current user.
   "total": 1
 }
 ```
-
 ### POST /groups/get-list-group-shared-you
 Get groups shared with current user.
 
 **Authentication:** Required
 
+**Response:** Same as **POST** /groups/get-list-group-you-created response
+
 ### POST /groups/get-list-group-community
 Get public groups.
 
 **Authentication:** Required
+
+**Response:** Same as **POST** /groups/get-list-group-you-created response
+
+### POST /groups/admin/view-all-groups
+Get all users (admin only).
+
+**Authentication:** Required (Admin role)
+
+**Request Body:**
+```json
+{
+  "group_name_filter": "group name", // optional
+  "num_member_filter": "5", // optional
+  "page": 1,
+  "limit": 10
+}
+```
+
+**Response:** Same as **POST** /groups/get-list-group-you-created response
 
 ### POST /groups/add-member
 Add member to group.
@@ -331,6 +354,13 @@ Add member to group.
 {
   "group_id": "group_id",
   "email": "member@example.com"
+}
+```
+**Response:**
+```json
+{
+  "code": 200,
+  "message": "Member added successfully",
 }
 ```
 
@@ -346,6 +376,7 @@ Remove member from group.
   "email": "member@example.com"
 }
 ```
+**Response:** Same as **POST** /groups/add-member response
 
 ### POST /groups/view-users-in-group
 View users in group.
@@ -384,9 +415,9 @@ Remove/delete group.
   "group_id": "group_id"
 }
 ```
+**Response:** Same as **POST** /groups/add-member response
 
 ---
-
 ## 4. Collection Management Endpoints
 
 ### POST /collections/new-collection
@@ -441,7 +472,7 @@ Modify collection settings.
   "is_hidden": false // optional
 }
 ```
-
+**Response:** Same as **POST** /collections/new-collection response
 ### POST /collections/get-list-collection-you-created
 Get collections created by current user.
 
@@ -476,6 +507,7 @@ Get collections shared with current user.
 
 **Authentication:** Required
 
+**Response:** Same as **POST** /collections/get-list-collection-you-created response
 ### POST /collections/get-list-collection-community
 Get public collections.
 
@@ -487,6 +519,24 @@ Get public collections.
   "search_name": "search term" // optional
 }
 ```
+
+**Response:** Same as **POST** /collections/get-list-collection-you-created response
+### POST /groups/admin/view-all-collections
+Get all users (admin only).
+
+**Authentication:** Required (Admin role)
+
+**Request Body:**
+```json
+{
+  "collection_name": "collection name", // optional
+  "status": "active", // optional
+  "created_after": 1,
+  "created_before": 10
+}
+```
+
+**Response:** Same as **POST** /collections/get-list-collection-you-created 
 
 ### POST /collections/share
 Share collection with specific user.
@@ -552,15 +602,15 @@ file_name: "custom_name.pdf" (optional, uses original if not provided)
   "code": 200,
   "message": "Updated successfully",
   "data": {
-    "fileId": "file_id",
-    "fileName": "document.pdf",
-    "fileType": "pdf",
+    "file_id": "file_id",
+    "file_name": "document.pdf",
+    "file_type": "pdf",
     "status": "pending",
-    "userId": "user_id",
-    "collectionId": "collection_id",
-    "createdAt": "01/01/2024 00:00:00",
-    "updatedAt": "01/01/2024 00:00:00",
-    "processResult": ""
+    "user_id": "user_id",
+    "collection_id": "collection_id",
+    "created_at": "01/01/2024 00:00:00",
+    "updated_at": "01/01/2024 00:00:00",
+    "process_result": ""
   }
 }
 ```
@@ -588,15 +638,15 @@ Get documents in a collection.
   "message": "Success",
   "data": [
     {
-      "fileId": "file_id",
-      "fileName": "document.pdf",
-      "fileType": "pdf",
+      "file_id": "file_id",
+      "file_name": "document.pdf",
+      "file_type": "pdf",
       "status": "completed",
-      "userId": "user_id",
-      "collectionId": "collection_id",
-      "createdAt": "01/01/2024 00:00:00",
-      "updatedAt": "01/01/2024 00:00:00",
-      "processResult": "Successfully processed"
+      "user_id": "user_id",
+      "collection_id": "collection_id",
+      "created_at": "01/01/2024 00:00:00",
+      "updated_at": "01/01/2024 00:00:00",
+      "process_result": "Successfully processed"
     }
   ],
   "total": 1
@@ -647,7 +697,7 @@ Get user's chat history list.
     {
       "id": "chat_id",
       "title": "Chat about AI",
-      "update_at": "1704067200"
+      "update_at": "01/01/2024 00:00:00"
     }
   ],
   "total": 1
@@ -670,8 +720,17 @@ Get specific chat conversation history.
   "data": {
     "chat_id": "chat_id",
     "history": [
-      ["user", "Hello, how are you?"],
-      ["assistant", "I'm doing well, thank you! How can I help you today?"]
+      {
+        "role": "user",
+        "content": "Hello, how are you?"
+      },
+      {
+        "role": "assistant",
+        "content": {
+          "answer": "I'm doing well, thank you!",
+          "source": []
+        }
+      }
     ]
   },
   "total": 2
@@ -712,7 +771,7 @@ Real-time chat streaming endpoint.
 
 **Authentication:** Required (via query parameter or connection header)
 
-**Connection:** `ws://localhost:8000/chats/chat-stream`
+**Connection:** `ws://127.0.0.1:8050/api/v1/chats/chat-stream`
 
 **Send Message Format:**
 ```json
@@ -734,10 +793,10 @@ Real-time chat streaming endpoint.
 {"type": "end_chunk", "data": "[END]"}
 
 // Source documents
-{"type": "source", "data": [{"title": "doc.pdf", "content": "relevant text"}]}
+{"type": "source", "data": [{"file_name": "doc.pdf", "file_id": "file_id"}]}
 
 // Chat ID (for new chats)
-{"type": "chatId", "data": "new_chat_id"}
+{"type": "chat_id", "data": "new_chat_id"}
 
 // Errors
 {"type": "error", "data": "Error message"}
@@ -799,33 +858,62 @@ Real-time chat streaming endpoint.
 
 ### WebSocket Integration Example (JavaScript)
 ```javascript
-const ws = new WebSocket('ws://localhost:8000/chats/chat-stream');
+const add = async (text, isInitial) => {
+        setIsInputDisabled(true);
+        setIsThinking(true);
 
-ws.onopen = () => {
-  ws.send(JSON.stringify({
-    question: "Hello, AI!",
-    modelName: "gpt-3.5-turbo",
-    chatId: "existing_chat_id" // optional
-  }));
-};
-
-ws.onmessage = (event) => {
-  const message = JSON.parse(event.data);
-  switch(message.type) {
-    case 'answer_chunk':
-      // Append to chat display
-      break;
-    case 'source':
-      // Show source documents
-      break;
-    case 'chatId':
-      // Save new chat ID
-      break;
-    case 'error':
-      // Handle error
-      break;
-  }
-};
+        try {
+        const ws = new WebSocket("ws://127.0.0.1:8050/api/v1/chats/chat-stream");
+        ws.onopen = () => {
+            ws.send(
+            JSON.stringify({
+                question: text,
+                chatId,
+                collectionId: selectedCollection?.collection_id,
+                fileIds: selectedFileNames,
+                modelName: selectedModel,
+            })
+            );
+        };
+        let accumulatedText = "";
+        let res_completed = {};
+        ws.onmessage = (event) => {
+            const message = JSON.parse(event.data); 
+            if (message.type === "answer_chunk"){
+                accumulatedText += message.data;
+                setAnswer(accumulatedText);
+            }
+            else if (message.type === "source") {
+                res_completed["answer"] = accumulatedText;
+                res_completed["source"] = message.data || [];
+            }
+            else if (message.type === "end_chunk") {
+                setChatHistory((prev) => [
+                    ...prev, 
+                    { role: "assistant", content: { ...res_completed } },
+                ]);
+                setIsInputDisabled(false);
+                setIsThinking(false);
+                setAnswer(""); // reset answer
+                formRef.current?.reset();
+            } else if (message.type === "chat_id") {
+                setChatId(message.data);
+                ws.close();
+                if (isInitial) { 
+                    queryClient.invalidateQueries({ queryKey: ['userChats'] })
+                }
+            }
+        };
+        ws.onerror = (error) => {
+            setIsInputDisabled(false);
+            setIsThinking(false);
+        };
+        ws.onclose = () => {};
+        } catch (err) {
+        setIsInputDisabled(false);
+        setIsThinking(false);
+        }
+    };
 ```
 
 This documentation provides all the necessary information to build a comprehensive frontend for your chatbot application.

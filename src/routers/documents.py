@@ -102,7 +102,7 @@ async def add_document(
         # Increment document count in collection
         resource['collection_tool'].increment_document_count(collection_id)
 
-        file_item = FileItem.from_dict(file_data).asdict()
+        file_item = FileItem.from_dict(file_data) #.asdict()
 
         return asdict(FileResponse(
             code=200,
@@ -139,7 +139,9 @@ async def get_documents_of_collection(
         await require_collection_access(request.collection_id, current_user)
 
         files_data = resource['document_tool'].get_files_of_collection(query=request)
-        file_items = [FileItem.from_dict(file).asdict() for file in files_data]
+        # file_items = [FileItem.from_dict(file).asdict() for file in files_data]
+        file_items = [FileItem.from_dict(file) for file in files_data]
+        
         if not file_items:
             file_items = []
 

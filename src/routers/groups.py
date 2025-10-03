@@ -190,7 +190,7 @@ async def get_list_group_community(
             status_code=500
         )
 
-@router.post("/view-all-groups", response_model=dict)
+@router.post("/admin/view-all-groups", response_model=dict)
 async def view_all_groups(
     request: ViewAllGroupsRequest,
     current_user: dict = Depends(require_admin)

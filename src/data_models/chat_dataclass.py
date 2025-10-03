@@ -36,7 +36,7 @@ class ChatListResponse(BaseResponse):
 @dataclass
 class ChatHistory:
     chat_id: str
-    history: List[List[str]]
+    history: List[Dict[str, Any]]
 
 @dataclass
 class ChatHistoryResponse(BaseResponse):

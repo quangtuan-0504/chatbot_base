@@ -688,6 +688,13 @@ Get user's chat history list.
 
 **Authentication:** Required
 
+**Query Parameters:**
+- `search` (optional): Search term to filter chats by title
+
+**Examples:**
+- Get all chats: `GET /chats/list-chats`
+- Search chats: `GET /chats/list-chats?search=AI`
+
 **Response:**
 ```json
 {

@@ -70,10 +70,16 @@ class ChatTool:
             return True
         except Exception as e:
             raise f"Delete chat failed: {str(e)}"
-    def get_list_chat(self, user_id: str):
+    def get_list_chat(self, user_id: str, search: str = None):
         try:
+            query = {"user_id": user_id}
+            
+            # Add title search filter if search parameter is provided
+            if search:
+                query["title"] = {"$regex": search, "$options": "i"}  # Case-insensitive search
+            
             lst_chat = self.chats_table.find(
-                {"user_id": user_id},
+                query,
                 {"_id": 1,"title": 1, "create_at": 1 , "update_at" : 1}
             )
             if not lst_chat:
@@ -96,4 +102,3 @@ class ChatTool:
             return True
         except Exception as e:
             raise f"Rename chat failed: {str(e)}"
- 

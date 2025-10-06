@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, WebSocket, Depends
+from fastapi import APIRouter, HTTPException, WebSocket, Depends, Query
 from typing import Annotated
 import json
 from fastapi.responses import JSONResponse
@@ -10,11 +10,14 @@ from ..utils.auth_utils import get_current_active_user
 router = APIRouter()
 
 @router.get("/list-chats")
-async def get_list_chat_of_user(current_user: dict = Depends(get_current_active_user)):
+async def get_list_chat_of_user(
+    current_user: dict = Depends(get_current_active_user),
+    search: str = Query(None, description="Search chats by title")
+):
     try:
         user_id = current_user['id']
-        # Query MongoDB for user's chat history
-        chats = resource['chat_tool'].get_list_chat(user_id)
+        # Query MongoDB for user's chat history with optional title search
+        chats = resource['chat_tool'].get_list_chat(user_id, search)
         chat_list = [ChatListItem.from_dict(chat) for chat in chats]
         chat_list = sorted(chat_list, key=lambda x: x.update_at, reverse=True)
 

@@ -507,6 +507,14 @@ Get collections shared with current user.
 
 **Authentication:** Required
 
+**Request Body:**
+```json
+{
+  "collection_name": "search term", // optional
+  "roles": ["editor", "viewer"]
+}
+```
+
 **Response:** Same as **POST** /collections/get-list-collection-you-created response
 ### POST /collections/get-list-collection-community
 Get public collections.

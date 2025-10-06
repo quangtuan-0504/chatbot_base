@@ -4,8 +4,8 @@ from dataclasses import asdict
 from ..tools.load_resources import resource
 from src.data_models.collection_dataclass import (
     CreateCollectionRequest, RemoveCollectionRequest, ModifyCollectionRequest,
-    GetCollectionsRequest, ShareCollectionRequest, ShareCollectionToGroupRequest,
-    GetCollectionCommunityRequest, ViewAllCollectionsRequest
+    ShareCollectionRequest, ShareCollectionToGroupRequest,
+    GetCollectionsCommunityRequest, ViewAllCollectionsRequest, GetCollectionsAccessRequest
 )
 from src.utils.auth_utils import (
     get_current_active_user, require_creator_or_admin, require_admin,
@@ -145,13 +145,15 @@ async def get_collections_you_created(
 
 @router.post("/get-list-collection-shared-you")
 async def get_collections_shared_with_you(
+    request: GetCollectionsAccessRequest,
     current_user: dict = Depends(get_current_active_user)
 ):
     """Get collections shared with current user (editor/viewer role)"""
     try:
         collections_data = resource['collection_tool'].get_collections_shared_with_user(
             user_id=current_user["id"],
-            roles=["editor", "viewer"]
+            collection_name=request.collection_name,
+            roles=request.roles
         )
 
         collection_items = [CollectionItem.from_dict(collection) for collection in collections_data]
@@ -172,7 +174,7 @@ async def get_collections_shared_with_you(
 
 @router.post("/get-list-collection-community")
 async def get_community_collections(
-    request: GetCollectionCommunityRequest,
+    request: GetCollectionsCommunityRequest,
     current_user: dict = Depends(get_current_active_user)
 ):
     """Get public collections that are not hidden"""

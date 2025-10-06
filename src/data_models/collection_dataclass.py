@@ -23,25 +23,6 @@ class ModifyCollectionRequest(BaseModel):
     collection_name: Optional[str]|None = None
     is_public: bool|None = False
     is_hidden: bool|None = False
-class GetCollectionsRequest(BaseModel):
-    roles: List|None = None
- 
-class request_Login(BaseModel):
-    userName: str 
-    password: str 
-    email: str
-    department: str
-
-
-class request_addDoc(BaseModel):
-    file: UploadFile = File(...),
-    collection_name: str = Form(...),
-    description: str = Form(...)
-
-class request_addUsertoCollection(BaseModel):
-    collection_id : str
-    user_email : Union[str, None] = None
-    department_name : Union[str, None] = None
 
 @dataclass
 class CollectionItem:
@@ -116,8 +97,12 @@ class ShareCollectionToGroupRequest(BaseModel):
     group_id: str
     role: str = "viewer"  # "editor" or "viewer"
 
-class GetCollectionCommunityRequest(BaseModel):
+class GetCollectionsCommunityRequest(BaseModel):
     search_name: Optional[str] = None
+
+class GetCollectionsAccessRequest(BaseModel):
+    collection_name: str
+    roles: List|None = ["editor", "viewer"]
 
 class ViewAllCollectionsRequest(BaseModel):
     collection_name: Optional[str] = None

@@ -460,7 +460,7 @@ class CollectionTool:
         collections = self.collections_table.find({"user_id_create": user_id})
         return list(collections)
 
-    def get_collections_shared_with_user(self, user_id: str, roles: list = None):
+    def get_collections_shared_with_user(self, user_id: str, collection_name: str = None, roles: list|None = None):
         """Get collections shared with user (excluding owned collections)"""
         if roles is None:
             roles = ["editor", "viewer"]
@@ -470,12 +470,16 @@ class CollectionTool:
             "user_id": user_id,
             "role": {"$in": roles}
         })
-        
         collections = []
         for user_collection in user_collections:
-            collection = self.collections_table.find_one(
-                {"_id": ObjectId(user_collection["collection_id"])}
-            )
+            if collection_name:
+                query = {
+                    "_id": ObjectId(user_collection["collection_id"]),
+                    "collection_name": {"$regex": collection_name, "$options": "i"}
+                }
+            else:
+                query = {"_id": ObjectId(user_collection["collection_id"])}
+            collection = self.collections_table.find_one(query)
             if collection:
                 collection["role"] = user_collection["role"]  # Add role info
                 collections.append(collection)

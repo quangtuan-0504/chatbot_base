@@ -292,6 +292,13 @@ Get groups created by current user.
 
 **Authentication:** Required
 
+**Request Body:**
+```json
+{
+  "group_name": "search term", // optional
+}
+```
+
 **Response:**
 ```json
 {
@@ -318,12 +325,26 @@ Get groups shared with current user.
 
 **Authentication:** Required
 
+**Request Body:**
+```json
+{
+  "group_name": "search term", // optional
+}
+```
+
 **Response:** Same as **POST** /groups/get-list-group-you-created response
 
 ### POST /groups/get-list-group-community
 Get public groups.
 
 **Authentication:** Required
+
+**Request Body:**
+```json
+{
+  "group_name": "search term", // optional
+}
+```
 
 **Response:** Same as **POST** /groups/get-list-group-you-created response
 
@@ -478,6 +499,13 @@ Get collections created by current user.
 
 **Authentication:** Required
 
+**Request Body:**
+```json
+{
+  "collection_name": "search term", // optional
+}
+```
+
 **Response:**
 ```json
 {
@@ -537,7 +565,7 @@ Get all users (admin only).
 **Request Body:**
 ```json
 {
-  "collection_name": "collection name", // optional
+  "collection_name": "search term", // optional
   "status": "active", // optional
   "created_after": 1,
   "created_before": 10

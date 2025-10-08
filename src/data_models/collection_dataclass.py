@@ -98,14 +98,15 @@ class ShareCollectionToGroupRequest(BaseModel):
     role: str = "viewer"  # "editor" or "viewer"
 
 class GetCollectionsCommunityRequest(BaseModel):
-    search_name: Optional[str] = None
+    collection_name: Optional[str] = None
 
 class GetCollectionsAccessRequest(BaseModel):
     collection_name: str
     roles: List|None = ["editor", "viewer"]
-
+class GetCollectionsOwnerRequest(BaseModel):
+    collection_name: Optional[str] = None
 class ViewAllCollectionsRequest(BaseModel):
     collection_name: Optional[str] = None
     status: Optional[str] = None
-    created_after: Optional[str] = None
-    created_before: Optional[str] = None
+    created_after: Optional[datetime|str] = None
+    created_before: Optional[datetime|str] = None

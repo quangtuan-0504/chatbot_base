@@ -99,10 +99,14 @@ class GroupTool:
             logger.error(f"Error modifying group: {str(e)}")
             raise
 
-    def get_groups_created_by_user(self, user_id: str) -> List[dict]:
+    def get_groups_created_by_user(self, user_id: str, group_name: Optional[str] = None) -> List[dict]:
         """Get list of groups created by user"""
         try:
-            groups_cursor = self.groups_table.find({"manager_id": user_id}).sort("created_at", -1)
+            query = {"manager_id": user_id}
+            if group_name:
+                query["group_name"] = {"$regex": group_name, "$options": "i"}
+
+            groups_cursor = self.groups_table.find(query).sort("created_at", -1)
             groups = []
             
             for group in groups_cursor:
@@ -116,14 +120,17 @@ class GroupTool:
             logger.error(f"Error getting groups created by user: {str(e)}")
             raise
 
-    def get_groups_shared_with_user(self, user_id: str) -> List[dict]:
+    def get_groups_shared_with_user(self, user_id: str, group_name: Optional[str] = None) -> List[dict]:
         """Get list of groups shared with user (where user is member)"""
         try:
             # Get group IDs where user is member (not admin_gr)
-            user_groups = self.user_group_table.find({
+            query = {
                 "user_id": user_id,
                 "role": "member"
-            })
+            }
+            if group_name:
+                query["group_name"] = {"$regex": group_name, "$options": "i"}
+            user_groups = self.user_group_table.find(query)
             
             group_ids = [ObjectId(ug["group_id"]) for ug in user_groups]
             
@@ -144,10 +151,14 @@ class GroupTool:
             logger.error(f"Error getting groups shared with user: {str(e)}")
             raise
 
-    def get_community_groups(self) -> List[dict]:
+    def get_community_groups(self, group_name: Optional[str] = None) -> List[dict]:
         """Get list of public groups (is_hidden=False)"""
         try:
-            groups_cursor = self.groups_table.find({"is_hidden": False}).sort("created_at", -1)
+            query = {"is_hidden": False}
+            if group_name:
+                query["group_name"] = {"$regex": group_name, "$options": "i"}
+
+            groups_cursor = self.groups_table.find(query).sort("created_at", -1)
             groups = []
             
             for group in groups_cursor:

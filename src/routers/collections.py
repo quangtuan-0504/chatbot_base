@@ -5,7 +5,8 @@ from ..tools.load_resources import resource
 from src.data_models.collection_dataclass import (
     CreateCollectionRequest, RemoveCollectionRequest, ModifyCollectionRequest,
     ShareCollectionRequest, ShareCollectionToGroupRequest,
-    GetCollectionsCommunityRequest, ViewAllCollectionsRequest, GetCollectionsAccessRequest
+    GetCollectionsCommunityRequest, ViewAllCollectionsRequest, GetCollectionsAccessRequest,
+    GetCollectionsOwnerRequest
 )
 from src.utils.auth_utils import (
     get_current_active_user, require_creator_or_admin, require_admin,
@@ -119,12 +120,14 @@ async def modify_collection(
 
 @router.post("/get-list-collection-you-created")
 async def get_collections_you_created(
+    request: GetCollectionsOwnerRequest,
     current_user: dict = Depends(get_current_active_user)
 ):
     """Get collections created by current user"""
     try:
         collections_data = resource['collection_tool'].get_collections_created_by_user(
-            user_id=current_user["id"]
+            user_id=current_user["id"],
+            collection_name=request.collection_name
         )
 
         collection_items = [CollectionItem.from_dict(collection) for collection in collections_data]
@@ -180,7 +183,7 @@ async def get_community_collections(
     """Get public collections that are not hidden"""
     try:
         collections_data = resource['collection_tool'].get_community_collections(
-            search_name=request.search_name
+            collection_name=request.collection_name
         )
 
         collection_items = [CollectionItem.from_dict(collection) for collection in collections_data]

@@ -1,3 +1,4 @@
+from urllib import request
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from dataclasses import asdict
@@ -108,11 +109,12 @@ async def modify_group(
 
 @router.post("/get-list-group-you-created", response_model=dict)
 async def get_list_group_you_created(
+    request: GetListGroupYouCreatedRequest,
     current_user: dict = Depends(get_current_active_user)
 ):
     """Get list of groups created by current user"""
     try:
-        groups = resource["group_tool"].get_groups_created_by_user(current_user["id"])
+        groups = resource["group_tool"].get_groups_created_by_user(current_user["id"], request.group_name)
         group_items = [GroupItem.from_dict(group) for group in groups]
 
         return asdict(GroupListResponse(
@@ -136,11 +138,12 @@ async def get_list_group_you_created(
 
 @router.post("/get-list-group-shared-you", response_model=dict)
 async def get_list_group_shared_you(
+    request: GetListGroupYouJoinedRequest,
     current_user: dict = Depends(get_current_active_user)
 ):
     """Get list of groups shared with current user"""
     try:
-        groups = resource["group_tool"].get_groups_shared_with_user(current_user["id"])
+        groups = resource["group_tool"].get_groups_shared_with_user(current_user["id"], request.group_name)
         group_items = [GroupItem.from_dict(group) for group in groups]
 
         return asdict(GroupListResponse(
@@ -164,11 +167,12 @@ async def get_list_group_shared_you(
 
 @router.post("/get-list-group-community", response_model=dict)
 async def get_list_group_community(
+    request: GetListGroupCommunityRequest,
     current_user: dict = Depends(get_current_active_user)
 ):
     """Get list of public groups (is_hidden=False)"""
     try:
-        groups = resource["group_tool"].get_community_groups()
+        groups = resource["group_tool"].get_community_groups(request.group_name)
         group_items = [GroupItem.from_dict(group) for group in groups]
 
         return asdict(GroupListResponse(

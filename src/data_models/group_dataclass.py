@@ -102,3 +102,10 @@ class GroupListResponse(BaseResponse):
 @dataclass
 class UserListInGroupResponse(BaseResponse):
     data: List[dict]  # Contains user info with name and email only
+
+class GetListGroupYouCreatedRequest:
+    group_name: Optional[str] = None
+class GetListGroupYouJoinedRequest:
+    group_name: Optional[str] = None
+class GetListGroupCommunityRequest:
+    group_name: Optional[str] = None

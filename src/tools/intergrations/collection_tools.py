@@ -455,21 +455,20 @@ class CollectionTool:
         except Exception as e:
             logger.error(f"Error decrementing collection size: {str(e)}")
             return False
-    def get_collections_created_by_user(self, user_id: str):
+    def get_collections_created_by_user(self, user_id: str, collection_name: str = None):
         """Get collections created by specific user"""
-        collections = self.collections_table.find({"user_id_create": user_id})
+        query = {"user_id_create": user_id}
+        if collection_name:
+            query["collection_name"] = {"$regex": collection_name, "$options": "i"}
+        collections = self.collections_table.find(query)
         return list(collections)
 
     def get_collections_shared_with_user(self, user_id: str, collection_name: str = None, roles: list|None = None):
         """Get collections shared with user (excluding owned collections)"""
-        if roles is None:
-            roles = ["editor", "viewer"]
-        
-        # Find user_collections where user has editor/viewer role
-        user_collections = self.user_collection_table.find({
-            "user_id": user_id,
-            "role": {"$in": roles}
-        })
+        query = {"user_id": user_id}
+        if roles:
+            query["role"] = {"$in": roles}
+        user_collections = self.user_collection_table.find(query)
         collections = []
         for user_collection in user_collections:
             if collection_name:
@@ -486,7 +485,7 @@ class CollectionTool:
         
         return collections
 
-    def get_community_collections(self, search_name: str = None):
+    def get_community_collections(self, collection_name: str = None):
         """Get public collections that are not hidden"""
         query = {
             "is_public": True,
@@ -494,8 +493,8 @@ class CollectionTool:
             "status": "active"
         }
         
-        if search_name:
-            query["collection_name"] = {"$regex": search_name, "$options": "i"}
+        if collection_name:
+            query["collection_name"] = {"$regex": collection_name, "$options": "i"}
         
         collections = self.collections_table.find(query)
         return list(collections)

@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional, List
 from .base_dataclass import BaseResponse
+from pydantic import BaseModel
 
 @dataclass
 class GroupItem:
@@ -103,9 +104,9 @@ class GroupListResponse(BaseResponse):
 class UserListInGroupResponse(BaseResponse):
     data: List[dict]  # Contains user info with name and email only
 
-class GetListGroupYouCreatedRequest:
+class GetListGroupYouCreatedRequest(BaseModel):
     group_name: Optional[str] = None
-class GetListGroupYouJoinedRequest:
+class GetListGroupYouJoinedRequest(BaseModel):
     group_name: Optional[str] = None
-class GetListGroupCommunityRequest:
+class GetListGroupCommunityRequest(BaseModel):
     group_name: Optional[str] = None

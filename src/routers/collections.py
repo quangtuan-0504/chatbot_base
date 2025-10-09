@@ -80,9 +80,6 @@ async def modify_collection(
                 status_code=400
             )
 
-        # Check if user is owner
-        await require_collection_owner(request.collection_id, current_user)
-
         # Prepare updates
         updates = {}
         if request.collection_name:
@@ -94,6 +91,7 @@ async def modify_collection(
 
         response_data = resource['collection_tool'].update_collection_settings(
             collection_id=request.collection_id,
+            user_id=current_user["id"],
             **updates
         )
 

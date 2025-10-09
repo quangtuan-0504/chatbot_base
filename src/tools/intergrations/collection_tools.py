@@ -9,6 +9,8 @@ from src.helpers.minio import minio_client
 from minio.deleteobjects import DeleteObject
 from bson import ObjectId
 from src.utils.timezone_utils import get_gmt7_datetime_for_db
+from fastapi import HTTPException, status
+from typing import Dict, Any
  
 
 class CollectionTool:
@@ -602,10 +604,14 @@ class CollectionTool:
         
         return results
 
-    def update_collection_settings(self, collection_id: str, **updates):
+    def update_collection_settings(self, collection_id: str, user_id: str, **updates):
         """Update collection settings like is_public, is_hidden, description"""
         allowed_fields = ["collection_name", "description", "is_public", "is_hidden", "status", "tags"]
-        
+
+        # Check if user is owner
+        if not self._is_collection_owner(collection_id, user_id):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to update this collection")
+
         update_data = {}
         for field, value in updates.items():
             if field in allowed_fields and value is not None:
@@ -625,3 +631,11 @@ class CollectionTool:
             raise ValueError(f"Collection with ID {collection_id} not found")
         
         return self.get_collection_by_id(collection_id)
+    def _is_collection_owner(self, collection_id: str, user_id: str) -> bool:
+        """Check if the user is the owner of the collection"""
+        record = self.user_collection_table.find_one({
+            "collection_id": collection_id,
+            "user_id": user_id,
+            "role": "owner"
+        })
+        return record is not None

@@ -204,9 +204,12 @@ class GroupTool:
 
     def add_member(self, group_id: str, email: str, assigned_by: str) -> dict:
         """Add member to group"""
-        # Check if assigner has permission (admin_gr or member)
-        if not self._can_add_member(assigned_by, group_id):
-            raise ValueError("You don't have permission to add members to this group")
+        # Check public group
+        group = self.groups_table.find_one({"_id": ObjectId(group_id)})
+        if not group['is_public']:
+            # Check if assigner has permission (admin_gr or member)
+            if not self._can_add_member(assigned_by, group_id):
+                raise ValueError("You don't have permission to add members to this group")
 
         # Get user by email
         user = self.users_table.find_one({"email": email})

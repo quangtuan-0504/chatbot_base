@@ -870,27 +870,217 @@ Real-time chat streaming endpoint.
 ## Frontend Integration Guide
 
 ### Authentication Flow
+Ban đầu sẽ hiển thị trang gốc, mô tả các tính năng và hướng dẫn sơ bộ cách sử dụng chatbot này. Trang này có nút get start , khi user nhấn vô sẽ chuyển sang trang đăng nhập đăng kí. user đăng nhập thành công sẽ chuyển sang trang để chat.
+
 1. **Login:** Call `/auth/login` → Store access/refresh tokens
 2. **API Calls:** Include `Authorization: Bearer <access_token>` header
 3. **Token Refresh:** When token expires, call `/auth/refresh-token`
 4. **Logout:** Call `/auth/logout` → Clear stored tokens
+5. **Reset password** Call `/auth/reset-password` → Reset password
 
-### Chat Interface Requirements
-1. **Chat List:** Use `/chats/list-chats` to show user's conversations
-2. **Chat History:** Use `/chats/chat-history/{chatId}` to load conversation
-3. **Real-time Chat:** Connect to WebSocket `/chats/chat-stream`
-4. **Chat Management:** Rename with `/chats/rename-chat`, delete with `/chats/delete-chat`
+### Giao diện chính ứng dụng Chatbot
 
-### Document Management Interface
-1. **Collections:** List user's collections with appropriate endpoints
-2. **File Upload:** Use `/documents/add-document` with FormData
-3. **File List:** Show collection documents with `/documents/get-list-docs-collection`
-4. **File Actions:** Download, delete files with respective endpoints
+Gồm hai phần chính: **thanh bên trái (sidebar)** và **khu vực chính (main chat area)**.
+
+---
+
+#### 🧭 Thanh bên trái (Sidebar)
+
+> Nằm cố định ở cạnh trái màn hình, chia thành nhiều khu vực chức năng.
+
+##### 1. Thanh điều hướng trên cùng
+
+- Nút **"Home"** nằm ở góc trên cùng, khi nhấn vào sẽ quay trở lại trang home.  
+- Bên cạnh có **Icon sidebar** (để mở/thu gọn sidebar).  
+
+---
+
+##### 2. Khu vực tạo và tìm kiếm hội thoại
+
+- Nút **"New chat"** để bắt đầu cuộc trò chuyện mới.  
+- Ô **"Search chat"** để tìm kiếm các cuộc trò chuyện đã có. Khi nhấn vào ô này thì giữa giao diện sẽ hiển thị Search modal để search các đoạn chat cũ, nếu nhấn vào sẽ mở lại đoạn chat cũ đó. Dùng endpoint `GET /chats/list-chats` để tìm kiếm các đoạn chat, endpoint `POST /chats/chat-history/{chatId}` để lấy lịch sử chat.
+
+---
+
+##### 3. Khu vực **Lịch sử chat**
+  
+- **Danh sách hội thoại**, Để liệt kê các đoạn hội thoại trước đó, sắp xếp theo thời gian và hiển thị thời gian, nhấn vào có thể mở lại các đoạn chat cũ. Dùng endpoint `GET /chats/list-chats` để lấy các đoạn hội thoại cũ. endpoint `POST /chats/chat-history/{chatId}` để mở cuộc hội thoại đó.
+
+> Mỗi đoạn chat có **nút menu 3 chấm** bên phải để hiển thị các tùy chọn (xóa, đổi tên, v.v.). Dùng endpoint `POST /chats/delete-chat/{chatId}` để xóa đoạn chat. Endpoint `PUT /chats/rename-chat` để đổi tên chat.
+
+---
+
+##### 4. Khu vực quản lý
+
+- **Các nút điều hướng:**
+  - Collections, nhấn vào đây sẽ chuyển qua trang quản lý collection  
+  - Groups  , nhấn vào đây sẽ chuyển qua trang quản lý group
+  - Manager users *(dành riêng cho admin)*, nhấn vào đây sẽ chuyển qua trang quản lý user. *Manager users* chỉ hiển thị khi người dùng là admin.
+---
+
+##### 5. Mục người dùng
+
+- **Nút “User”** ở cuối sidebar (hiển thị thông tin người dùng). Nhấn vào sẽ hiển thị ra tùy chọn **logout** hoặc **settings**.
+nhấn vào settings thì sẽ hiển thị thông tin người dùng, và có thể đổi mật khẩu, chỉnh sửa hồ sơ. Dùng endpoint `GET /users/profile` để lấy profile của user và `PUT /users/profile` để chỉnh sửa thông tin user.
+
+#### 💬 Khu vực chính (Main Chat Area)
+Chiếm phần lớn màn hình bên phải.
+##### 1. Dropdown select model
+- Nút **"Model"** cho phép chọn mô hình chatbot. Nằm ở phía góc trái trên của khu vực chính.
+
+##### 2. Khung nhập text
+- Khi tạo new chat xuất hiện ở giữa là hộp để nhập nội dung, còn khi mở các đoạn chat cũ, hộp nhập text này sẽ ở phía dưới cuộc trò chuyện.
+
+- Có biểu tượng “+” bên trái, nhấn vào sẽ hiển thị ra dropdown menu (để thêm tệp hoặc tính năng bổ sung Choose collection, web search, ...).
+  - Khi chọn Choose collection sẽ hiển thị ra search modal để tìm và chọn collection. Sử dụng endpoint `POST /collections/get-list-collection-shared-you` để tìm collection. Sau khi chọn sẽ có button chứa tên collection ngay bên cạnh sau dấu “+” để biết collection nào đã được chọn, có dấu “X” để bỏ chọn.
+
+- Có biểu tượng mũi tên lên (↑) bên phải (để gửi tin nhắn). Sử dụng endpoint `WebSocket /chats/chat-stream` để chat
+
+##### 3. Vùng hiển thị nội dung đoạn chat
+- Phần hiển thị nội dung của đoạn chat.
+- Có nút copy cho phép copy câu trả lời, câu hỏi.
+- Nếu câu trả lời có `source` đi kèm, thì cho phép người dùng chọn hoặc bỏ chọn `source` đó cho câu hỏi tiếp theo.
+### Users Management Interface
+- Trang này chỉ dành cho admin.
+- Phần sidebar bên trái vẫn được giữ nguyên khi chuyển qua trang này.
+- Giúp admin quản lý user, sử dụng endpoint `POST /users/admin/view-all-users` để tìm kiếm và lấy danh sách thông tin các user.
+- Với mỗi user admin sử dụng endpoint `POST /users/admin/grant-role` để gán vai trò cho user.
 
 ### Group & Sharing Interface
-1. **Group Management:** Create, modify, delete groups
-2. **Member Management:** Add/remove group members
-3. **Collection Sharing:** Share collections with users or groups
+Phần sidebar bên trái vẫn được giữ nguyên khi chuyển qua trang này.
+#### 💬 Khu vực chính của quản lý group
+
+Phần này chiếm phần lớn giao diện, hiển thị **nội dung chính của trang “Groups”**.
+
+---
+
+##### 1. Thanh công cụ trên cùng (Tabs và nút chức năng)
+
+Bao gồm:
+
+- **Các tab chuyển giữa các loại nhóm:**
+  - `Your groups` *(tab đang chọn, nền xanh nhạt)*  , sử dụng endpoint `POST /groups/get-list-group-you-created` để tìm kiếm và lấy danh sách group.
+  - `Shared you groups`  , sử dụng endpoint `POST /groups/get-list-group-shared-you` để tìm kiếm và lấy danh sách group.
+  - `Community groups`, sử dụng endpoint `POST /groups/get-list-group-community` để tìm kiếm và lấy danh sách group.
+  - `All`  , Chỉ có admin mới có tab này, sử dụng endpoint `POST /groups/admin/view-all-groups` để tìm kiếm và lấy danh sách group.
+- **Nút “Create group”** – mở form tạo nhóm mới. sử dụng endpoint `POST /groups/create-group`
+
+---
+
+##### 2. Thanh tìm kiếm nhóm
+
+- Ngay dưới thanh tab, có **ô tìm kiếm** với placeholder:  
+  > `"Search by group names ..."`
+- tab `All` thì có thể tìm theo số thành viên trong nhóm nữa.
+
+---
+
+##### 3. Danh sách nhóm (Group Cards)
+
+Phần bên dưới là **các khối hình chữ nhật bo góc**, mỗi khối hiển thị thông tin một nhóm.
+
+Mỗi **thẻ nhóm (Group Card)** gồm:
+
+- **Tên nhóm (Group name)**  
+- **Mô tả (Description)**  
+- **Nút menu ba chấm dọc (⋮)** ở góc phải trên → mở menu tùy chọn với các hành động:
+  - Nếu là tab `Your groups` or `Shared you groups` sẽ có:
+    - Share
+    - Details  
+    - Remove
+  - Nếu là tab `Community groups` sẽ có:
+    - Details  
+    - Join
+  - Nếu là tab `all` chỉ có:
+    - Details
+
+  - Khi nhấn vào share sẽ hiện lên một khung chứa chỗ để nhập email của người muốn thêm vô group, nhấn nút add member để thêm người đó vô group. sử dụng endpoint `POST /groups/add-member`.
+  - Khi nhấn details sẽ hiện lên khung chứa các thông tin của group, có thể sửa các thông tin của group, sau đó nhấn save để lưu các thay đổi. sử dụng endpoint `POST /groups/modify-group`
+  - Khi nhấn remove sẽ xóa group. sử dung endpoint `POST /groups/remove-group`
+  - Khi Join sẽ tự mình thêm vô group nếu group public
+- Nếu nhấn vào thẻ nhóm sẽ hiển thị ra danh sách các thành viên trong nhóm, Dùng endpoint `POST /groups/view-users-in-group`. mỗi thành viên sẽ có nút remove, nhấn vào sẽ xóa thành viên đó khỏi nhóm. sử dụng endpoint `POST /groups/remove-member`
+
+> Các nhóm được bố trí theo **dạng lưới**, tương tự giao diện quản lý nhóm của các ứng dụng cộng đồng.
+
+---
+
+##### 4. Form “Create Group” (Popup / Modal)
+
+Khi nhấn **“Create group”**, hiển thị **hộp thoại tạo nhóm mới**.
+
+**Các trường nhập:**
+- Group name  
+- Description  
+- Tùy chọn: `is public` / `is hidden`
+
+**Nút hành động:**
+- Cancel  
+- Create  
+
+---
+
+### Collections, Documents Management Interface
+Phần sidebar bên trái vẫn được giữ nguyên khi chuyển qua trang này.
+#### 💬 Khu vực chính của quản lý collection
+
+Phần này chiếm phần lớn giao diện, hiển thị **nội dung chính của trang “Collections”**.
+
+---
+
+##### 1. Thanh công cụ trên cùng (Tabs và nút chức năng)
+
+Bao gồm:
+
+- **Các tab chuyển giữa các loại nhóm:**
+  - `Your collection` *(tab đang chọn, nền xanh nhạt)*  , sử dụng endpoint `POST /collections/get-list-collection-you-created` để tìm kiếm và lấy danh sách group.
+  - `Shared you collections`  , sử dụng endpoint `POST /collections/get-list-collection-shared-you` để tìm kiếm và lấy danh sách group.
+  - `Community collections`, sử dụng endpoint `POST /collections/get-list-collection-community` để tìm kiếm và lấy danh sách group.
+  - `All`  , Chỉ có admin mới có tab này, sử dụng endpoint `POST /groups/admin/view-all-collections` để tìm kiếm và lấy danh sách group.
+- **Nút “Create collection”** – mở form tạo nhóm mới. sử dụng endpoint `POST /collections/new-collection`
+
+---
+
+##### 2. Thanh tìm kiếm nhóm
+
+- Ngay dưới thanh tab, có **ô tìm kiếm** với placeholder:  
+  > `"Search by collection names ..."`
+
+---
+
+##### 3. Danh sách collection (Collection Cards)
+
+Phần bên dưới là **các khối hình chữ nhật bo góc**, mỗi khối hiển thị thông tin một collection.
+
+Mỗi **thẻ Collection (Collection Card)** gồm:
+
+- **Tên Collection (Collection name)**  
+- **Mô tả (Description)**  
+- **Nút menu ba chấm dọc (⋮)** ở góc phải trên → mở menu tùy chọn với các hành động:
+  - Nếu là tab `Your collections` or `Shared you collections` sẽ có:
+    - Share
+    - Details  
+    - Remove
+  - Nếu là tab `Community collections` sẽ có:
+    - Details  
+    - Get
+  - Nếu là tab `all` chỉ có:
+    - Details
+
+  - Khi nhấn vào share sẽ hiện lên một khung chứa chỗ để nhập email của một người và dropdown để chọn nhóm mà muốn chia sẻ collection cho. có dropdown để chọn vai trò khi chia sẻ. sử dụng endpoint `POST /collections/share` để chia sẻ cho một người và `POST /collections/shares` cho một nhóm.
+  - Khi nhấn details sẽ hiện lên khung chứa các thông tin của collection, có thể sửa các thông tin của collection, sau đó nhấn save để lưu các thay đổi. sử dụng endpoint `POST /collections/modify-collection`
+  - Khi nhấn remove sẽ xóa collection. sử dung endpoint `POST /collections/delete-collection`
+  - Khi Get sẽ tự mình chia sẻ collection đó cho mình nếu collection public. sử dụng endpoint `POST /collections/share`
+- Nếu nhấn vào thẻ collection sẽ hiển thị ra danh sách các file trong collection. Sử dụng endpoint `POST /documents/get-list-docs-collection`. Mỗi file sẽ có nút remove, nhấn vào sẽ xóa file đó khỏi collection, sử dụng endpoint `POST /documents/delete-file`. Mỗi file cũng sẽ có nút download để tải file về, sử dụng endpoint `POST /documents/download-file`. Có nút add file để add file mới vào collection, sử dụng endpoint `POST /documents/add-document`.
+
+> Các collection được bố trí theo **dạng lưới**, tương tự giao diện quản lý nhóm của các ứng dụng cộng đồng.
+
+---
+
+##### 4. Form “Create collection” (Popup / Modal)
+
+Khi nhấn **“Create collection”**, hiển thị **hộp thoại tạo nhóm mới**.
+---
+
 
 ### Recommended State Management
 - User authentication state (token, user info)

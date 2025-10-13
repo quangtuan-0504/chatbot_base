@@ -69,7 +69,7 @@ async def get_chat_history(chatId: str, current_user: dict = Depends(get_current
         )
 
 @router.post("/delete-chat/{chatId}")
-async def delete_chat(chatId: str, current_user = Annotated[dict,Depends(get_current_active_user)]):
+async def delete_chat(chatId: str, current_user: dict = Depends(get_current_active_user)):
     """Delete a chat for the authenticated user."""
     try:
         if not chatId:

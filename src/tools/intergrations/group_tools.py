@@ -359,7 +359,14 @@ class GroupTool:
         except Exception as e:
             logger.error(f"Error getting group by ID: {str(e)}")
             return None
-
+    def get_group_members(self, group_id: str) -> dict:
+        try:
+            # Get all user_ids in the group
+            memberships = self.user_group_table.find({"group_id": group_id})
+            return memberships
+        except Exception as e:
+            logger.error(f"Error getting group members: {str(e)}")
+            raise
     def _is_admin_gr(self, user_id: str, group_id: str) -> bool:
         """Check if user is admin_gr of the group"""
         membership = self.user_group_table.find_one({

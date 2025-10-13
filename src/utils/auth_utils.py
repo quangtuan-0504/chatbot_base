@@ -89,7 +89,22 @@ async def get_current_user(request: Request, token: Annotated[str, Depends(oauth
         raise credentials_exception
     
     return user
-
+async def get_current_user_ws(token: str):
+    """Xác thực user từ token cho WebSocket"""
+    try:
+        payload = verify_token(token)
+        email: str = payload.get("sub")
+        if email is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        # Import here to avoid circular import
+        from src.tools.load_resources import resource
+        user = resource["user_tool"].get_user_by_email(email)
+        if user is None:
+            raise HTTPException(status_code=401, detail="User not found")
+        return user
+    except jwt.PyJWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    
 async def get_current_active_user(current_user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, Any]:
     """Get current active user - checks if user is active"""
     if not current_user.get("is_active", False):

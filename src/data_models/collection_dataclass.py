@@ -102,7 +102,7 @@ class GetCollectionsCommunityRequest(BaseModel):
 
 class GetCollectionsAccessRequest(BaseModel):
     collection_name: str
-    roles: List|None = ["editor", "viewer"]
+    roles: List|None = None
 class GetCollectionsOwnerRequest(BaseModel):
     collection_name: Optional[str] = None
 class ViewAllCollectionsRequest(BaseModel):

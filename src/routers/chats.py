@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 from dataclasses import asdict
 from ..tools.load_resources import resource, provider_model
 from ..data_models import *
-from ..utils.auth_utils import get_current_active_user
+from ..utils.auth_utils import get_current_active_user, get_current_user_ws
 
 router = APIRouter()
 
@@ -152,7 +152,13 @@ async def rename_chat(request: RenameChatRequest, current_user: dict = Depends(g
 
 
 @router.websocket("/chat-stream")
-async def stream_chat_websocket(websocket: WebSocket, current_user: Annotated[dict, Depends(get_current_active_user)]):
+async def stream_chat_websocket(websocket: WebSocket, token: str = None):
+    # Xác thực token
+    if not token:
+        await websocket.close(code=1008, reason="Missing authentication token")
+        return
+   
+    current_user = await get_current_user_ws(token)
     await websocket.accept()
     try:
         # Nhận và kiểm tra dữ liệu từ client

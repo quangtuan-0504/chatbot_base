@@ -41,6 +41,10 @@ class GrantRoleRequest:
     system_role: str  # "admin" | "creator" | "user"
 
 @dataclass
+class EnableDisableUserRequest:
+    user_id: str
+
+@dataclass
 class UserItem:
     id: str
     email: str

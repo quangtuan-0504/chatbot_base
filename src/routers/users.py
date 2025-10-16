@@ -145,3 +145,48 @@ async def grant_role(
             )),
             status_code=500
         )
+@router.put("/admin/enable-disable-user", response_model=dict)
+async def enable_disable_user(
+    request: EnableDisableUserRequest,
+    current_user: dict = Depends(require_admin)
+):
+    """Disable user (admin only)"""
+    try:
+        if not request.user_id:
+            return JSONResponse(
+                content=asdict(BaseResponse(
+                    code=400,
+                    message=ResponseMessage.missing_field('user_id')
+                )),
+                status_code=400
+            )
+
+        updated_user = resource["user_tool"].enable_disable_user(
+            user_id=request.user_id,
+            updated_by=current_user["id"]
+        )
+
+        return asdict(UserResponse(
+            code=200,
+            data=UserItem.from_dict(updated_user),
+            message="Disable user successfully"
+        ))
+
+    except ValueError as ve:
+        return JSONResponse(
+            content=asdict(BaseResponse(
+                code=400,
+                message=str(ve)
+            )),
+            status_code=400
+        )
+    except Exception as e:
+        logger.error(f"Disable user error: {str(e)}")
+        return JSONResponse(
+            content=asdict(BaseResponse(
+                code=500,
+                message=ResponseMessage.error_occurred(e)
+            )),
+            status_code=500
+        )
+ 

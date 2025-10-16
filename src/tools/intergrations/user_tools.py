@@ -213,7 +213,41 @@ class UserTool:
         except Exception as e:
             logger.error(f"Error updating user profile: {str(e)}")
             raise
+    def get_all_users(self, name_filter: str = None, email_filter: str = None, page: int = 1, limit: int = 10) -> dict:
+        """Get all users with optional filtering and pagination"""
+        try:
+            # Build filter query
+            filter_query = {}
+            if name_filter:
+                filter_query["name"] = {"$regex": name_filter, "$options": "i"}
+            if email_filter:
+                filter_query["email"] = {"$regex": email_filter, "$options": "i"}
 
+            # Calculate skip value for pagination
+            skip = (page - 1) * limit
+
+            # Get total count
+            total = self.users_table.count_documents(filter_query)
+
+            # Get users with pagination
+            users_cursor = self.users_table.find(filter_query).skip(skip).limit(limit).sort("created_at", -1)
+            users = []
+
+            for user in users_cursor:
+                user["id"] = str(user["_id"])
+                del user["_id"]
+                if "password_hash" in user:
+                    del user["password_hash"]
+                users.append(user)
+
+            return {
+                "users": users,
+                "total": total
+            }
+
+        except Exception as e:
+            logger.error(f"Error getting all users: {str(e)}")
+            raise
     def update_user_role(self, user_id: str, system_role: str, updated_by: str) -> dict:
         """Update user system role"""
         valid_roles = ["admin", "creator", "user"]
@@ -241,7 +275,31 @@ class UserTool:
         except Exception as e:
             logger.error(f"Error updating user role: {str(e)}")
             raise
+    def enable_disable_user(self, user_id: str, updated_by: str) -> dict:
+        """Update is_active = True/False for user"""
+        try:
+            current_time = get_gmt7_datetime_for_db().isoformat()
+            user = self.users_table.find_one({"_id": ObjectId(user_id)}) # dict or None
+            if user:
+                result = self.users_table.update_one(
+                    {"_id": ObjectId(user_id)},
+                    {
+                        "$set": {
+                            "is_active": False if user['is_active'] else True,
+                            "updated_at": current_time
+                        }
+                    }
+                )
+                if result.modified_count == 0:
+                    raise ValueError("No changes made")
+            else:
+                raise ValueError("User not found")
 
+            logger.info(f"User {user_id} was enable/disable by {updated_by}")
+            return self.get_user_by_id(user_id)
+        except Exception as e:
+            logger.error(f"Error enable/disable user: {str(e)}")
+            raise
     def create_admin_user(self, email: str, password: str, username: str = "admin", name: str = "Administrator") -> dict:
         """Create admin user (used during app startup)"""
         try:

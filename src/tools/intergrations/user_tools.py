@@ -166,69 +166,52 @@ class UserTool:
     def update_user_profile(self, user_id: str, email: str = None, name: str = None) -> dict:
         """Update user profile"""
         try:
+            # Kiểm tra user tồn tại
+            user = self.users_table.find_one({"_id": ObjectId(user_id)})
+            if not user:
+                raise ValueError("User not found")
+            
             update_data = {"updated_at": get_gmt7_datetime_for_db().isoformat()}
+            has_changes = False
             
             if email:
-                # Check if email is already taken by another user
-                existing_user = self.users_table.find_one({
-                    "email": email,
-                    "_id": {"$ne": ObjectId(user_id)}
-                })
-                if existing_user:
-                    raise ValueError("Email already taken by another user")
-                update_data["email"] = email
+                # Chỉ update nếu email khác với email hiện tại
+                if email != user.get("email"):
+                    # Check if email is already taken by another user
+                    existing_user = self.users_table.find_one({
+                        "email": email,
+                        "_id": {"$ne": ObjectId(user_id)}
+                    })
+                    if existing_user:
+                        raise ValueError("Email already taken by another user")
+                    update_data["email"] = email
+                    has_changes = True
 
             if name:
-                update_data["name"] = name
+                # Chỉ update nếu name khác với name hiện tại
+                if name != user.get("name"):
+                    update_data["name"] = name
+                    has_changes = True
 
+            # Luôn update updated_at
             result = self.users_table.update_one(
                 {"_id": ObjectId(user_id)},
                 {"$set": update_data}
             )
 
-            if result.modified_count == 0:
-                raise ValueError("User not found or no changes made")
+            if result.matched_count == 0:
+                raise ValueError("User not found")
+
+            # Log nếu không có thay đổi
+            if not has_changes:
+                logger.info(f"No profile changes for user {user_id} (same values)")
 
             return self.get_user_by_id(user_id)
 
+        except ValueError:
+            raise
         except Exception as e:
             logger.error(f"Error updating user profile: {str(e)}")
-            raise
-
-    def get_all_users(self, name_filter: str = None, email_filter: str = None, page: int = 1, limit: int = 10) -> dict:
-        """Get all users with optional filtering and pagination"""
-        try:
-            # Build filter query
-            filter_query = {}
-            if name_filter:
-                filter_query["name"] = {"$regex": name_filter, "$options": "i"}
-            if email_filter:
-                filter_query["email"] = {"$regex": email_filter, "$options": "i"}
-
-            # Calculate skip value for pagination
-            skip = (page - 1) * limit
-
-            # Get total count
-            total = self.users_table.count_documents(filter_query)
-
-            # Get users with pagination
-            users_cursor = self.users_table.find(filter_query).skip(skip).limit(limit).sort("created_at", -1)
-            users = []
-            
-            for user in users_cursor:
-                user["id"] = str(user["_id"])
-                del user["_id"]
-                if "password_hash" in user:
-                    del user["password_hash"]
-                users.append(user)
-
-            return {
-                "users": users,
-                "total": total
-            }
-
-        except Exception as e:
-            logger.error(f"Error getting all users: {str(e)}")
             raise
 
     def update_user_role(self, user_id: str, system_role: str, updated_by: str) -> dict:

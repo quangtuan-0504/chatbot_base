@@ -74,8 +74,8 @@ async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
             )
 
         # Create access token
-        access_token = create_access_token(data={"sub": user["email"]})
-        refresh_token = create_refresh_token(data={"sub": user["email"]})
+        access_token = create_access_token(data={"sub": user["id"]})
+        refresh_token = create_refresh_token(data={"sub": user["id"]})
 
         # Update last login
         resource["user_tool"].update_last_login(user["id"])

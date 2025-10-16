@@ -72,10 +72,11 @@ async def get_current_user(request: Request, token: Annotated[str, Depends(oauth
     
     try:
         payload = verify_token(token)
-        email: str = payload.get("sub")
+        # print("Payload:", payload)  # Debugging line to print the payload
+        user_id: str = payload.get("sub")
         token_type: str = payload.get("type")
         
-        if email is None or token_type != "access":
+        if user_id is None or token_type != "access":
             raise credentials_exception
             
     except HTTPException:
@@ -84,7 +85,7 @@ async def get_current_user(request: Request, token: Annotated[str, Depends(oauth
     # Import here to avoid circular import
     from src.tools.load_resources import resource
     # from tools.load_resources import resource # ko hiểu sao import như này thì resource lại là dict rỗng
-    user = resource["user_tool"].get_user_by_email(email)
+    user = resource["user_tool"].get_user_by_id(user_id)
     if user is None:
         raise credentials_exception
     
@@ -93,12 +94,12 @@ async def get_current_user_ws(token: str):
     """Xác thực user từ token cho WebSocket"""
     try:
         payload = verify_token(token)
-        email: str = payload.get("sub")
-        if email is None:
+        user_id: str = payload.get("sub")
+        if user_id is None:
             raise HTTPException(status_code=401, detail="Invalid token")
         # Import here to avoid circular import
         from src.tools.load_resources import resource
-        user = resource["user_tool"].get_user_by_email(email)
+        user = resource["user_tool"].get_user_by_id(user_id)
         if user is None:
             raise HTTPException(status_code=401, detail="User not found")
         return user

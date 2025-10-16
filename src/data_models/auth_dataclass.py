@@ -43,6 +43,7 @@ class GrantRoleRequest:
 @dataclass
 class EnableDisableUserRequest:
     user_id: str
+    target_status: bool  # True for enable, False for disable
 
 @dataclass
 class UserItem:

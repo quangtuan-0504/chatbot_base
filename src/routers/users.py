@@ -163,6 +163,7 @@ async def enable_disable_user(
 
         updated_user = resource["user_tool"].enable_disable_user(
             user_id=request.user_id,
+            target_status=request.target_status,
             updated_by=current_user["id"]
         )
 

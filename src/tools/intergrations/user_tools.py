@@ -275,25 +275,21 @@ class UserTool:
         except Exception as e:
             logger.error(f"Error updating user role: {str(e)}")
             raise
-    def enable_disable_user(self, user_id: str, updated_by: str) -> dict:
+    def enable_disable_user(self, user_id: str, target_status: bool, updated_by: str) -> dict:
         """Update is_active = True/False for user"""
         try:
             current_time = get_gmt7_datetime_for_db().isoformat()
-            user = self.users_table.find_one({"_id": ObjectId(user_id)}) # dict or None
-            if user:
-                result = self.users_table.update_one(
-                    {"_id": ObjectId(user_id)},
-                    {
-                        "$set": {
-                            "is_active": False if user['is_active'] else True,
-                            "updated_at": current_time
-                        }
+            result = self.users_table.update_one(
+                {"_id": ObjectId(user_id)},
+                {
+                    "$set": {
+                        "is_active": target_status,
+                        "updated_at": current_time
                     }
-                )
-                if result.modified_count == 0:
-                    raise ValueError("No changes made")
-            else:
-                raise ValueError("User not found")
+                }
+            )
+            if result.modified_count == 0:
+                raise ValueError("User not found or no changes made")
 
             logger.info(f"User {user_id} was enable/disable by {updated_by}")
             return self.get_user_by_id(user_id)

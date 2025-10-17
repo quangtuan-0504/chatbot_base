@@ -273,7 +273,49 @@ async def add_member(
             )),
             status_code=500
         )
+@router.post("/join-group", response_model=dict)
+async def join_group(
+    request: JoinGroupRequest,
+    current_user: dict = Depends(get_current_active_user)
+):
+    """Join public group"""
+    try:
+        if not request.group_id:
+            return JSONResponse(
+                content=asdict(BaseResponse(
+                    code=400,
+                    message=ResponseMessage.missing_field('group_id')
+                )),
+                status_code=400
+            )
 
+        result = resource["group_tool"].join_group(
+            group_id=request.group_id,
+            user_id=current_user["id"]
+        )
+
+        return asdict(BaseResponse(
+            code=200,
+            message=result["message"]
+        ))
+
+    except ValueError as ve:
+        return JSONResponse(
+            content=asdict(BaseResponse(
+                code=400,
+                message=str(ve)
+            )),
+            status_code=400
+        )
+    except Exception as e:
+        logger.error(f"Join group error: {str(e)}")
+        return JSONResponse(
+            content=asdict(BaseResponse(
+                code=500,
+                message=ResponseMessage.error_occurred(e)
+            )),
+            status_code=500
+        )
 @router.post("/remove-member", response_model=dict)
 async def remove_member(
     request: RemoveMemberRequest,

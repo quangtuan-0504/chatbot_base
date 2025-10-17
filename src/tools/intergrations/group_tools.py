@@ -185,7 +185,7 @@ class GroupTool:
             skip = (page - 1) * limit
             total = self.groups_table.count_documents(filter_query)
 
-            groups_cursor = self.groups_table.find(filter_query).skip(skip).limit(limit).sort("created_at", -1)
+            groups_cursor = self.groups_table.find(filter_query).skip(skip).limit(limit).sort("created_at", -1) # List[dict]
             groups = []
             
             for group in groups_cursor:
@@ -204,12 +204,9 @@ class GroupTool:
 
     def add_member(self, group_id: str, email: str, assigned_by: str) -> dict:
         """Add member to group"""
-        # Check public group
-        group = self.groups_table.find_one({"_id": ObjectId(group_id)})
-        if not group['is_public']:
-            # Check if assigner has permission (admin_gr or member)
-            if not self._can_add_member(assigned_by, group_id):
-                raise ValueError("You don't have permission to add members to this group")
+        # Check if assigner has permission (admin_gr or member)
+        if not self._can_add_member(assigned_by, group_id):
+            raise ValueError("You don't have permission to add members to this group")
 
         # Get user by email
         user = self.users_table.find_one({"email": email})
@@ -249,7 +246,48 @@ class GroupTool:
         except Exception as e:
             logger.error(f"Error adding member: {str(e)}")
             raise
+    def join_group(self, group_id: str, user_id: str) -> dict:
+        """Join to public group"""
+        # Check public group
+        group = self.groups_table.find_one({"_id": ObjectId(group_id)})
+        if not group["is_public"]:
+            raise ValueError("Group is not public")
+        # Check user
+        user = self.users_table.find_one({"_id": ObjectId(user_id)})
+        if not user:
+            raise ValueError("User not found")
 
+        # Check if user is already in group
+        existing_membership = self.user_group_table.find_one({
+            "user_id": user_id,
+            "group_id": group_id
+        })
+        if existing_membership:
+            raise ValueError("User is already a member of this group")
+
+        current_time = get_gmt7_datetime_for_db().isoformat()
+
+        try:
+            # Add user to group
+            self.user_group_table.insert_one({
+                "user_id": user_id,
+                "group_id": group_id,
+                "role": "member",
+                "assigned_by": user_id,
+                "assigned_at": current_time
+            })
+
+            # Update member count
+            self.groups_table.update_one(
+                {"_id": ObjectId(group_id)},
+                {"$inc": {"num_member": 1}, "$set": {"updated_at": current_time}}
+            )
+
+            return {"message": "Member added successfully"}
+
+        except Exception as e:
+            logger.error(f"Error adding member: {str(e)}")
+            raise
     def remove_member(self, group_id: str, email: str, removed_by: str) -> dict:
         """Remove member from group (only admin_gr can remove)"""
         # Check if remover is admin_gr

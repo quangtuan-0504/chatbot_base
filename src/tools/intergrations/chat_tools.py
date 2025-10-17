@@ -30,11 +30,12 @@ class ChatTool:
         source: List          
     ):
         try:
+            current_time = get_gmt7_datetime_for_db().isoformat()
             chat = {
                 "title": question[:40],
                 "user_id": user_id,
-                "create_at": datetime.now(timezone.utc).strftime("%d-%m-%Y %H:%M"),
-                "update_at": datetime.now(timezone.utc).strftime("%d-%m-%Y %H:%M"),
+                "create_at": current_time,
+                "update_at": current_time,
                 "history": [
                     {"role": "user", "content": question},
                     {"role": "assistant", "content": {"answer": answer, "source": source}}
@@ -51,10 +52,11 @@ class ChatTool:
         new_items: List[Dict]
     ):  
         try:
+            current_time = get_gmt7_datetime_for_db().isoformat()
             result = self.chats_table.update_one(
                 {"user_id": user_id, "_id": ObjectId(chat_id)},
                 {
-                    "$set": {"update_at": datetime.now(timezone.utc).strftime("%d-%m-%Y %H:%M")}, 
+                    "$set": {"update_at": current_time}, 
                     "$push": {"history": {"$each": new_items}}
                 }
             )

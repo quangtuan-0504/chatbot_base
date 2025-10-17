@@ -68,7 +68,9 @@ class ModifyGroupRequest:
 class AddMemberRequest:
     group_id: str
     email: str
-
+@dataclass
+class JoinGroupRequest:
+    group_id: str
 @dataclass
 class RemoveMemberRequest:
     group_id: str

@@ -110,7 +110,7 @@ class CollectionTool:
                     raise milvus_error
             else:
                 logger.warning(f"Collection {collection_name} already exists in MongoDB.")
-                raise Exception(f"Collection {collection_name} already exists in MongoDB.")
+                raise ValueError(f"Collection {collection_name} already exists in MongoDB.")
         except Exception as e:
             logger.error(f"Failed to create collection: {str(e)}")
             raise
@@ -518,6 +518,9 @@ class CollectionTool:
 
     def share_collection_with_user(self, collection_id: str, user_email: str, role: str, assigned_by: str):
         """Share collection with a specific user"""
+        # Check if user is owner
+        if not self._is_collection_owner(collection_id, assigned_by):
+            raise ValueError("Only owner can share the collection")
         # Get user by email
         from src.tools.load_resources import resource
         user = resource["user_tool"].get_user_by_email(user_email)
@@ -563,6 +566,9 @@ class CollectionTool:
 
     def share_collection_with_group(self, collection_id: str, group_id: str, role: str, assigned_by: str):
         """Share collection with all members of a group"""
+        # Check if user is owner
+        if not self._is_collection_owner(collection_id, assigned_by):
+            raise ValueError("Only owner can share the collection")
         # Get all group members
         from src.tools.load_resources import resource
         group_members = resource["group_tool"].get_group_members(group_id)
@@ -610,7 +616,7 @@ class CollectionTool:
 
         # Check if user is owner
         if not self._is_collection_owner(collection_id, user_id):
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to update this collection")
+            raise ValueError("Only owner can update the collection settings")
 
         update_data = {}
         for field, value in updates.items():

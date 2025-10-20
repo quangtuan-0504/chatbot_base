@@ -52,6 +52,14 @@ async def create_new_collection(
             data=collection_item,
             message=ResponseMessage.CREATE_SUCCESS
         ))
+    except ValueError as ve:
+        return JSONResponse(
+            content=asdict(BaseResponse(
+                code=400, 
+                message=str(ve)
+            )),
+            status_code=400
+        )
     except Exception as e:
         logger.error(f"Failed to create collection: {str(e)}")
         return JSONResponse(
@@ -84,6 +92,8 @@ async def modify_collection(
         updates = {}
         if request.collection_name:
             updates["collection_name"] = request.collection_name
+        if request.description:
+            updates["description"] = request.description
         if request.is_public is not None:
             updates["is_public"] = request.is_public
         if request.is_hidden is not None:
@@ -103,8 +113,11 @@ async def modify_collection(
         ))
     except ValueError as ve:
         return JSONResponse(
-            content=asdict(BaseResponse(code=404, message=str(ve))),
-            status_code=404
+            content=asdict(BaseResponse(
+                code=400, 
+                message=str(ve)
+            )),
+            status_code=400
         )
     except Exception as e:
         logger.error(f"Modify collection error: {str(e)}")
@@ -241,11 +254,8 @@ async def share_collection_with_user(
     request: ShareCollectionRequest,
     current_user: dict = Depends(get_current_active_user)
 ):
-    """Share collection with a specific user via email"""
+    """Share collection with a specific user via email, Only owner can share."""
     try:
-        # Check if user is owner
-        await require_collection_owner(request.collection_id, current_user)
-
         result = resource['collection_tool'].share_collection_with_user(
             collection_id=request.collection_id,
             user_email=request.user_email,
@@ -260,8 +270,11 @@ async def share_collection_with_user(
 
     except ValueError as ve:
         return JSONResponse(
-            content=asdict(BaseResponse(code=404, message=str(ve))),
-            status_code=404
+            content=asdict(BaseResponse(
+                code=400, 
+                message=str(ve)
+            )),
+            status_code=400
         )
     except Exception as e:
         logger.error(f"Share collection error: {str(e)}")
@@ -278,11 +291,8 @@ async def share_collection_with_group(
     request: ShareCollectionToGroupRequest,
     current_user: dict = Depends(get_current_active_user)
 ):
-    """Share collection with all members of a group"""
+    """Share collection with all members of a group, Only owner can share."""
     try:
-        # Check if user is owner
-        await require_collection_owner(request.collection_id, current_user)
-
         results = resource['collection_tool'].share_collection_with_group(
             collection_id=request.collection_id,
             group_id=request.group_id,
@@ -301,8 +311,11 @@ async def share_collection_with_group(
 
     except ValueError as ve:
         return JSONResponse(
-            content=asdict(BaseResponse(code=404, message=str(ve))),
-            status_code=404
+            content=asdict(BaseResponse(
+                code=400, 
+                message=str(ve)
+            )),
+            status_code=400
         )
     except Exception as e:
         logger.error(f"Share collection with group error: {str(e)}")
@@ -329,9 +342,6 @@ async def delete_collection(
                 )),
                 status_code=400
             )
-        
-        # Check if user is owner
-        await require_collection_owner(request.collection_id, current_user)
 
         response_data = resource['collection_tool'].remove_collection(
             indexing_milvus=resource['indexing'],

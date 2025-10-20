@@ -21,6 +21,7 @@ class RemoveCollectionRequest(BaseModel):
 class ModifyCollectionRequest(BaseModel):
     collection_id: str
     collection_name: Optional[str]|None = None
+    description: str|None = None
     is_public: bool|None = False
     is_hidden: bool|None = False
 

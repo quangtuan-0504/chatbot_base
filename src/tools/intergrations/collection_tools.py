@@ -538,7 +538,7 @@ class CollectionTool:
         
         if existing:
             # Update role if different
-            if existing["role"] != role:
+            if existing["role"] != role and existing["role"] != "owner":
                 self.user_collection_table.update_one(
                     {"_id": existing["_id"]},
                     {
@@ -551,7 +551,7 @@ class CollectionTool:
                 )
                 return {"action": "updated", "user_id": user_id, "role": role}
             else:
-                return {"action": "already_exists", "user_id": user_id, "role": role}
+                return {"action": "already_exists", "user_id": user_id, "role": existing["role"]}
         
         # Add new user collection relationship
         self.user_collection_table.insert_one({
@@ -584,7 +584,7 @@ class CollectionTool:
             })
             
             if existing:
-                if existing["role"] != role:
+                if existing["role"] != role and existing["role"] != "owner":
                     self.user_collection_table.update_one(
                         {"_id": existing["_id"]},
                         {
@@ -597,7 +597,7 @@ class CollectionTool:
                     )
                     results.append({"action": "updated", "user_id": user_id, "role": role})
                 else:
-                    results.append({"action": "already_exists", "user_id": user_id, "role": role})
+                    results.append({"action": "already_exists", "user_id": user_id, "role": existing["role"]})
             else:
                 self.user_collection_table.insert_one({
                     "user_id": user_id,
@@ -609,7 +609,32 @@ class CollectionTool:
                 results.append({"action": "created", "user_id": user_id, "role": role})
         
         return results
+    
+    def receive_collection(self, collection_id: str, user_id: str):
+        """User self share collection"""
+        # Check collection is public
+        collection = self.collections_table.find_one({"_id": ObjectId(collection_id)})
+        if not collection["is_public"]:
+            raise ValueError(f"Collection is not public. Please, contact admin to access.")
+        # Check if user already has access to this collection
+        existing = self.user_collection_table.find_one({
+            "user_id": user_id,
+            "collection_id": collection_id
+        })
+        if existing:
+            return {"action": "already_exists", "user_id": user_id, "role": existing['role']}
 
+        # Add new user collection relationship
+        self.user_collection_table.insert_one({
+            "user_id": user_id,
+            "collection_id": collection_id,
+            "role": "viewer",
+            "assigned_by": user_id,
+            "assigned_at": get_gmt7_datetime_for_db().isoformat()
+        })
+
+        return {"action": "created", "user_id": user_id, "role": "viewer"}
+ 
     def update_collection_settings(self, collection_id: str, user_id: str, **updates):
         """Update collection settings like is_public, is_hidden, description"""
         allowed_fields = ["collection_name", "description", "is_public", "is_hidden", "status", "tags"]

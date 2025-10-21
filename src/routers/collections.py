@@ -10,7 +10,6 @@ from src.data_models.collection_dataclass import (
 )
 from src.utils.auth_utils import (
     get_current_active_user, require_creator_or_admin, require_admin,
-    require_collection_owner, require_collection_access
 )
 from ..loggers.logapp import logger
 from ..data_models import *
@@ -262,7 +261,7 @@ async def share_collection_with_user(
             role=request.role,
             assigned_by=current_user["id"]
         )
-
+        logger.info(f"Share collection result: {result}")
         return asdict(BaseResponse(
             code=200,
             message=f"Collection shared successfully. Action: {result['action']}"
@@ -327,6 +326,41 @@ async def share_collection_with_group(
             status_code=500
         )
 
+@router.post("/receive-collection")
+async def receive_collection(
+    request: ReceiveCollectionRequest,
+    current_user: dict = Depends(get_current_active_user)
+):
+    """User receive collections public"""
+    try:
+        result = resource['collection_tool'].receive_collection(
+            collection_id = request.collection_id,
+            user_id = current_user['id']
+        )
+        return asdict(BaseResponse(
+            code=200,
+            message=f"Receive collection.  Action: {result['action']}"
+        ))
+
+    except ValueError as ve:
+        return JSONResponse(
+            content=asdict(BaseResponse(
+                code=400, 
+                message=str(ve)
+            )),
+            status_code=400
+        )
+    except Exception as e:
+        logger.error(f"Receive collection error: {str(e)}")
+        return JSONResponse(
+            content=asdict(BaseResponse(
+                code=500,
+                message=ResponseMessage.error_occurred(e)
+            )),
+            status_code=500
+        )
+
+ 
 @router.post("/delete-collection")
 async def delete_collection(
     request: RemoveCollectionRequest,

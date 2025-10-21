@@ -97,7 +97,8 @@ class ShareCollectionToGroupRequest(BaseModel):
     collection_id: str
     group_id: str
     role: str = "viewer"  # "editor" or "viewer"
-
+class ReceiveCollectionRequest(BaseModel):
+    collection_id: str
 class GetCollectionsCommunityRequest(BaseModel):
     collection_name: Optional[str] = None
 

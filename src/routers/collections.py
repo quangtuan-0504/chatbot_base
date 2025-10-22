@@ -361,8 +361,8 @@ async def receive_collection(
         )
 
  
-@router.post("/delete-collection")
-async def delete_collection(
+@router.post("/owner-delete-collection")
+async def owner_delete_collection(
     request: RemoveCollectionRequest,
     current_user: dict = Depends(get_current_active_user)
 ):
@@ -377,11 +377,10 @@ async def delete_collection(
                 status_code=400
             )
 
-        response_data = resource['collection_tool'].remove_collection(
+        response_data = resource['collection_tool'].owner_remove_collection(
             indexing_milvus=resource['indexing'],
             collection_id=request.collection_id,
             user_id=current_user["id"],
-            role="owner"
         )
         
         return asdict(CollectionResponse(
@@ -392,14 +391,62 @@ async def delete_collection(
 
     except ValueError as ve:
         return JSONResponse(
-            content=asdict(BaseResponse(code=404, message=str(ve))),
-            status_code=404
+            content=asdict(BaseResponse(
+                code=400, 
+                message=str(ve)
+            )),
+            status_code=400
         )
     except RuntimeError as re:
         logger.error(f"Remove collection: {str(re)}")
         return JSONResponse(
             content=asdict(BaseResponse(code=500, message=str(re))),
             status_code=500
+        )
+    except Exception as e:
+        logger.error(f"Remove collection error: {str(e)}")
+        return JSONResponse(
+            content=asdict(BaseResponse(
+                code=500,
+                message=ResponseMessage.error_occurred(e)
+            )),
+            status_code=500
+        )
+
+@router.post("/not-owner-delete-collection")
+async def not_owner_delete_collection(
+    request: RemoveCollectionRequest,
+    current_user: dict = Depends(get_current_active_user)
+):
+    logger.info(f"Delete collection request: {request}")
+    try: 
+        if not request.collection_id:
+            return JSONResponse(
+                content=asdict(BaseResponse(
+                    code=400,
+                    message=ResponseMessage.missing_field('collection_id')
+                )),
+                status_code=400
+            )
+
+        response_data = resource['collection_tool'].not_owner_remove_collection(
+            collection_id=request.collection_id,
+            user_id=current_user["id"],
+        )
+
+        return asdict(CollectionResponse(
+            code=200,
+            data=CollectionItem.from_dict(response_data) if response_data else None,
+            message=ResponseMessage.DELETE_SUCCESS
+        ))
+
+    except ValueError as ve:
+        return JSONResponse(
+            content=asdict(BaseResponse(
+                code=400, 
+                message=str(ve)
+            )),
+            status_code=400
         )
     except Exception as e:
         logger.error(f"Remove collection error: {str(e)}")

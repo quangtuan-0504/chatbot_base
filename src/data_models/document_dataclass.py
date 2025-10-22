@@ -42,6 +42,7 @@ class User(BaseModel):# trong tutorial là nó dùng API của bên thứ 3 đ�
 # Pydantic model for request validation
 class FilesQueryRequest(BaseModel):
     collection_id: str
+    file_name: Optional[str] = None
     file_types: Optional[List[str]] = None
     status: Optional[List[str]] = None
     created_after: Optional[datetime|str] = None
@@ -57,6 +58,7 @@ class FileItem:
     file_id: str  # MongoDB _id
     file_name: str
     file_type: str
+    description: str
     status: str
     user_id: str
     collection_id: str
@@ -69,6 +71,7 @@ class FileItem:
             file_id=str(file_dict.get('file_id', '')),
             file_name=file_dict.get('file_name', ''),
             file_type=file_dict.get('file_type', ''),
+            description=file_dict.get('description', ''),
             status=file_dict.get('status', 'pending'),
             process_result= file_dict.get('result', ''),
             user_id=file_dict.get('user_id', ''),

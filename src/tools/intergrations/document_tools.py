@@ -74,11 +74,12 @@ class DocumentTool:
         Get files matching the search criteria
         """
 
-
         # Xây dựng query filter
         filters = {"collection_id": query.collection_id}
 
         # Thêm các filter tùy chọn
+        if query.file_name:
+            filters["file_name"] = {"$regex": query.file_name, "$options": "i"}
         if query.file_types:
             filters["file_type"] = {"$in": query.file_types}
 

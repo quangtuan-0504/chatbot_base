@@ -64,12 +64,12 @@ def vicinity_search(
             return "", [], []
 
         # Get collection statistics
-        stats = client.get_collection_stats(collection_name)
-        row_count = stats.get('row_count', 0)
+        # stats = client.get_collection_stats(collection_name)
+        # row_count = stats.get('row_count', 0)
 
-        if row_count == 0:
-            logger.warning(f"Collection {collection_name} is empty")
-            return "", [], []
+        # if row_count == 0:
+        #     logger.warning(f"Collection {collection_name} is empty")
+        #     return "", [], []
 
         # Ensure collection is loaded
         client.load_collection(collection_name)

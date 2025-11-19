@@ -763,18 +763,29 @@ Get specific chat conversation history.
   "data": {
     "chat_id": "chat_id",
     "history": [
-      {
-        "role": "user",
-        "content": "Hello, how are you?"
-      },
-      {
-        "role": "assistant",
-        "content": {
-          "answer": "I'm doing well, thank you!",
-          "source": []
-        }
-      }
-    ]
+                {
+                  "role": "user",
+                  "content": 
+                  {
+                    "message": [
+                        {"type": "text", "text": "question"},
+                        {"type": "image_url", "image_url": "data:image/jpeg;base64,{image_base64}"},
+                        {"type": "image_url", "image_url": "data:image/jpeg;base64,{image_base64}"}
+                    ],
+                  }
+                },
+                {
+                  "role": "assistant", 
+                  "content": 
+                  {
+                    "message": [
+                        {"type": "text", "text": "answer"},
+                    ],
+                    "source": [{"file_id" : "file id", "file_name" : "file name"}],
+                    "collection_id": "collection id"
+                  }
+                }
+            ]
   },
   "total": 2
 }

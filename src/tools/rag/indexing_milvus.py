@@ -19,7 +19,7 @@ from loggers.logapp import logger
 
 
 
-class IndexingMilvusOriVLLM:
+class IndexingMilvusOri:
     def __init__(
         self,
         milvus_client: MilvusClient,

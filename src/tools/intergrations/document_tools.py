@@ -2,7 +2,7 @@ import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__),'..','..')))
 from helpers.mongodb.get_mongodb import MongoDBConnections
-from tools.rag.indexing_milvus import IndexingMilvusOriVLLM
+from tools.rag.indexing_milvus import IndexingMilvusOri
 from src.utils.timezone_utils import get_gmt7_datetime_for_db
 from configs import settings
 from loggers.logapp import logger
@@ -134,7 +134,7 @@ class DocumentTool:
         )
 
         return self.get_file(user_id)
-    def remove_file(self, file_id: str, collection_id: str, indexing_milvus: IndexingMilvusOriVLLM) -> Optional[Dict[str, Any]]:
+    def remove_file(self, file_id: str, collection_id: str, indexing_milvus: IndexingMilvusOri) -> Optional[Dict[str, Any]]:
         """
         Remove a file and its record
         """

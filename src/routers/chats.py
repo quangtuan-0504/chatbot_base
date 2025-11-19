@@ -6,6 +6,8 @@ from dataclasses import asdict
 from ..tools.load_resources import resource, provider_model
 from ..data_models import *
 from ..utils.auth_utils import get_current_active_user, get_current_user_ws
+import time
+from ..configs import settings
 
 router = APIRouter()
 
@@ -150,14 +152,27 @@ async def rename_chat(request: RenameChatRequest, current_user: dict = Depends(g
             status_code=500
         )
 
-
 @router.websocket("/chat-stream")
 async def stream_chat_websocket(websocket: WebSocket, token: str = None):
+
+    """
+    Logic: 
+    Nhận request, nếu là chat cũ thì lấy đoạn chat cũ từ mongoDB ra rồi format sơ lại, không thì thôi, rồi truyền history, QA vào hàm stream chat.
+    Hàm stream chat gửi response cho FE, xong ở đây lưu lại đoạn chat vào mongoDB. Lưu chat trong mongoDB thì phải lưu kiểu j để có thể:
+    Lấy được đầy đủ thông tin đoạn chat ra để cho vào LLM, Dựa vào các ví dụ dùng python client openAI để xem đầu vào cho LLM có những thứ gì.
+    Tối ưu truy xuất, dễ dàng mở rộng tính năng mới.
+    Trong một cuộc trò chuyện, mỗi turn hiện tại gồm những thông tin gì?: text, các image, sources.
+    Xem xét xem mỗi model cần những thuộc tính gì để cấu hình sử dụng, gom cụm từng loại model để với mỗi loại có một format chung để sử dụng
+    Dễ dàng quản lý, mở rộng, linh hoạt tùy biến, tránh trùng lặp code. Mình dùng nhiều model, mỗi model có 1 cấu hình để chạy, những model nào có cấu hình giống nhau thì gom lại.
+    Cần sửa gì ở FE, hiển thị lịch sử chat với format hisotry mới, thêm nút chọn hình ảnh.
+
+    """
+
     # Xác thực token
     if not token:
         await websocket.close(code=1008, reason="Missing authentication token")
         return
-   
+
     current_user = await get_current_user_ws(token)
     await websocket.accept()
     try:
@@ -184,6 +199,7 @@ async def stream_chat_websocket(websocket: WebSocket, token: str = None):
         file_ids = request.get("fileIds")
         collection_id = request.get("collectionId")
         model_name = request["modelName"]
+        images = request.get("images", [])
 
         if not question or not isinstance(question, str):
             await websocket.send_text(json.dumps({"type": "error", "data": "Question is required and must be a string"}))
@@ -214,29 +230,49 @@ async def stream_chat_websocket(websocket: WebSocket, token: str = None):
                     await websocket.send_text(json.dumps({"type": "error", "data": "Invalid chat history format"}))
                     await websocket.close()
                     raise HTTPException(status_code=500, detail="Invalid chat history format")
-                content = mes["content"]
-                if isinstance(content, dict) and "answer" in content:
-                    content = content["answer"]
-                if isinstance(content, str):
-                    if "Nguồn:" in content:
-                        content = " ".join(content.split("Nguồn:")[0])
-                    elif "Source:" in content:
-                        content = " ".join(content.split("Source:")[0])
+                text = mes["content"]["message"][0]["text"]
+                if isinstance(text, str):
+                    if "Nguồn:" in text:
+                        text = " ".join(text.split("Nguồn:")[0])
+                    elif "Source:" in text:
+                        text = " ".join(text.split("Source:")[0])
+                    mes["content"]["message"][0]["text"] = text
                 history_chat_processed.append({
                     "role": mes["role"],
-                    "content": content
+                    "content": mes["content"]["message"]
                 })
 
         chat_model = resource[model_name] 
         answer = ""
         source = []
-        if model_name in provider_model.get('openai-api', []) + provider_model.get('vllm',[]): # use dict.get instead of dict['key'] to avoid error key doesn't exist
+
+        client_type = ""
+        model_type = ""
+        for model_inf in settings.chat_models:
+            if model_name == model_inf['name']:
+                client_type = model_inf['client']
+                model_type = model_inf['type_model']
+
+
+        if client_type == "openai-client":
+            images_tmp = images
+            if model_type == "llm":
+                # bỏ hết ảnh trong current question
+                # bỏ hết ảnh trong chat history, trước khi cho vô model, vẫn lưu lại trog mongodb để hiển thị.
+                images_tmp = []
+                for i, mes in enumerate(history_chat_processed):
+                    history_chat_processed[i]["content"] = [history_chat_processed[i]["content"][0]]
+            elif model_type == "vlm":
+                pass
             for response_chunk in chat_model.chat_stream(
                 query=question,
+                model_name= model_name,
+                image_urls=images_tmp,
                 history_chat=history_chat_processed, 
                 collection_name=collection_id, 
                 file_ids=file_ids
-            ):
+            ):  
+                # time.sleep(0.05)
                 if isinstance(response_chunk, str):
                     if response_chunk != "[END]":
                         answer += response_chunk
@@ -255,20 +291,22 @@ async def stream_chat_websocket(websocket: WebSocket, token: str = None):
 
         if chat_id is None or chat_id == "":
             chat_id = resource['chat_tool'].create_chat(
-                question=question,
                 user_id=user_id,
+                question=question,
+                image_urls=images,
                 answer=answer,
-                source=source
+                source=source,
+                collection_id=collection_id
             )
         else:
-            new_items = []
-            if history_chat_processed and history_chat_processed[-1]["role"] == "assistant":
-                new_items.append({"role": "user", "content": question})
-            new_items.append({"role": "assistant", "content": {"answer": answer, "source": source}})
             modified_count = resource['chat_tool'].update_chat_history(
                 chat_id=chat_id,
                 user_id=user_id,
-                new_items=new_items
+                question=question,
+                image_urls=images,
+                answer=answer,
+                source=source,
+                collection_id=collection_id
             )
             if modified_count == 0:
                 await websocket.send_text(json.dumps({"type": "error", "data": "Chat not found or not updated"}))

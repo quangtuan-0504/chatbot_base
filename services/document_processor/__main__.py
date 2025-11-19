@@ -14,7 +14,7 @@ from src.helpers.mongodb.get_mongodb import MongoDBConnections
 from src.helpers.milvus.milvus import get_milvus_connection
 from src.helpers.minio import minio_client
 from src.loggers.logapp import logger
-from src.tools.rag.indexing_milvus import IndexingMilvusOriVLLM
+from src.tools.rag.indexing_milvus import IndexingMilvusOri
 from src.configs import settings
 
 
@@ -34,7 +34,7 @@ except Exception as e:
     raise
 
 
-# Get client openai-api
+# Get client openai-api, if use any model from openai
 if any(model["provider"] == "openai-api" for model in settings.chat_models + [settings.embedding_model]):
     openai_client = OpenAI(
         api_key=settings.openai_api_key,
@@ -49,7 +49,7 @@ try:
     if embedding_model["provider"] == "openai-api":
         openai_emb_client = openai_client
         embedding_model_name_or_path = embedding_model["name"]
-    elif embedding_model["provider"] == "vllm":
+    elif embedding_model["provider"] == "vllm" or "ollama":
         openai_emb_client = OpenAI(
             api_key=embedding_model["api_key"],
             base_url=embedding_model["base_url"],
@@ -58,8 +58,8 @@ try:
     else:
         raise ValueError(f"Unsupported embedding model provider: {embedding_model['provider']}")
 
-    if embedding_model['provider'] in ["openai-api", "vllm"]:
-        indexing = IndexingMilvusOriVLLM(
+    if embedding_model['provider'] in ["openai-api", "vllm", "ollama"]:
+        indexing = IndexingMilvusOri(
             milvus_client = milvus_client,
             openai_client = openai_emb_client,
             embedding_model_name_or_path = embedding_model_name_or_path,
@@ -67,9 +67,9 @@ try:
     elif embedding_model['provider'] == "huggingface-transformers":
         # indexing = IndexingMilvus(...)
         pass  # Placeholder for Hugging Face Transformers indexing
-        logger.info("IndexingMilvusOriVLLM loaded.")
+    logger.info("IndexingMilvusOri loaded.")
 except Exception as e:
-    logger.error(f"Failed to initialize IndexingMilvusOriVLLM: {str(e)}")
+    logger.error(f"Failed to initialize IndexingMilvusOri: {str(e)}")
     raise
 
 # # test connnect emb model vllm

@@ -3,7 +3,7 @@ import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__),'..')))
 from loggers.logapp import logger
-from rag.indexing_milvus import IndexingMilvusOriVLLM
+from rag.indexing_milvus import IndexingMilvusOri
 from pymongo.collection import Collection
 from ...configs import settings
 
@@ -11,7 +11,7 @@ from ...configs import settings
 def process_file(
         file_data : dict,
         files_collection: Collection,
-        indexing: IndexingMilvusOriVLLM
+        indexing: IndexingMilvusOri
     ):
     """
     Process a file based on its type and add it to the Milvus vectorstore.

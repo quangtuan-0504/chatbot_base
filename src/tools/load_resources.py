@@ -17,7 +17,7 @@ from tools.intergrations.minio_tools import ensure_bucket_exists
 from utils.get_list_model_by_provider import get_list_model_by_provider
 
 
-from tools.rag.indexing_milvus import  IndexingMilvusOriVLLM
+from tools.rag.indexing_milvus import  IndexingMilvusOri
 from tools.rag.rag import ChatbotRAGvLLM
 from typing import Dict
 from openai import OpenAI
@@ -71,7 +71,7 @@ def load_resource()-> Dict:
         raise
     
 
-    # Get client openai-api
+    # Get client openai-api, if use any model from openai
     if any(model["provider"] == "openai-api" for model in settings.chat_models + [settings.embedding_model]):
         openai_client = OpenAI(
             api_key=settings.openai_api_key,
@@ -79,14 +79,14 @@ def load_resource()-> Dict:
     else:
         openai_client = None
         logger.warning("No use model from openAI, some features may not work.")
-    
+
     # Load client embedding model
     embedding_model = settings.embedding_model
     try:
         if embedding_model["provider"] == "openai-api":
             openai_emb_client = openai_client
             embedding_model_name_or_path = embedding_model["name"]
-        elif embedding_model["provider"] == "vllm":
+        elif embedding_model["provider"] == "vllm" or "ollama":
             openai_emb_client = OpenAI(
                 api_key=embedding_model["api_key"],
                 base_url=embedding_model["base_url"],
@@ -94,9 +94,9 @@ def load_resource()-> Dict:
             embedding_model_name_or_path = embedding_model["path"]
         else:
             raise ValueError(f"Unsupported embedding model provider: {embedding_model['provider']}")
-        
-        if embedding_model['provider'] in ["openai-api", "vllm"]:
-            indexing = IndexingMilvusOriVLLM(
+
+        if embedding_model['provider'] in ["openai-api", "vllm", "ollama"]:
+            indexing = IndexingMilvusOri(
                 milvus_client = milvus_client,
                 openai_client = openai_emb_client,
                 embedding_model_name_or_path = embedding_model_name_or_path,
@@ -105,32 +105,38 @@ def load_resource()-> Dict:
             # indexing = IndexingMilvus(...)
             pass  # Placeholder for Hugging Face Transformers indexing
         resources["indexing"] = indexing
-        logger.info("IndexingMilvusOriVLLM loaded.")
+        logger.info("IndexingMilvusOri loaded.")
     except Exception as e:
-        logger.error(f"Failed to initialize IndexingMilvusOriVLLM: {str(e)}")
+        logger.error(f"Failed to initialize IndexingMilvusOri: {str(e)}")
         raise
-    
+
     # Load chat models
     for model in settings.chat_models:
         try:
             name = model["name"]
             provider = model["provider"]
-            api_key = model["api_key"]
-            base_url = model.get("base_url", "")
+            client = model["client"]
+            type_model = model["type_model"]
             path = model.get("path", "")
-        
+            base_url = model.get("base_url", "")
+            api_key = model["api_key"]
+
+
             if provider == "openai-api":
                 client_chat_model = openai_client
                 chat_model_name = name
             elif provider == "vllm":
                 client_chat_model = OpenAI(api_key=api_key, base_url=base_url)
                 chat_model_name = path
+            elif provider == "ollama":
+                client_chat_model = OpenAI(api_key=api_key, base_url=base_url)
+                chat_model_name = name
             else:
                 logger.warning(f"Unsupported provider {provider} for model {name}")
                 continue
-            
+
             # Initialize the ChatbotRAGvLLM with the loaded model
-            if provider in ["openai-api", "vllm"]:
+            if client == "openai-client":
                 logger.info(f"Loading chat model {name} from {provider}...")
                 resources[name] = ChatbotRAGvLLM(
                     chat_model_name = chat_model_name,

@@ -4,7 +4,7 @@ import time
 sys.path.append(os.path.abspath(os.path.join(
     os.path.dirname(__file__), '..', '..'))) # thư mục cha của file hiện tại nhảy ra 2 nấc "src\tools\rag\..\.."
 
-from tools.rag.prompts import PROMPT_AYA_EXPANSE_8B_VLLM, PROMPT_GPT4O_OPENAI_API, GENERAL_SYSTEM_PROMPT
+from tools.rag.prompts import prompts
 from typing import List, Dict, Optional, Tuple, Generator
 from openai import OpenAI
 from pymilvus import MilvusClient
@@ -32,29 +32,39 @@ class ChatbotRAGvLLM:
         self.client_embedding_model = client_embedding_model
         self.embedding_model_name = embedding_model_name
         self.milvus_client = milvus_client
-    def _prepare_messages(self, query: str, history_chat: List[Dict[str, str]], context: str = ""):
+    def _prepare_messages(self, query: str,model_name:str, image_urls: List, history_chat: List[Dict[str, str]], context: str = ""):
         """
         Prepare messages for the chat completion
         history_chat: 
             - role: assistant / user
             - content: "text"
         """
-
+        messages = []
         if context:
-            system_content = PROMPT_AYA_EXPANSE_8B_VLLM.format(query_=query)
-            system_content += f"\ncontext information: {context}"
-            messages = [{"role": "system", "content": system_content}]
+            if prompts[model_name]["rag"]:
+                system_content = prompts[model_name]["rag"].format(query_=query)
+                system_content += f"\ncontext information: {context}"
+                messages = [{"role": "system", "content": system_content}]
         else:
-            messages = [{"role": "system", "content": GENERAL_SYSTEM_PROMPT}]
+            if prompts[model_name]["normal"]:
+                messages = [{"role": "system", "content": prompts[model_name]["normal"]}]
 
         messages.extend(history_chat)
 
         # Make sure the last message is from the user
         if not history_chat or messages[-1]["role"] == "assistant" or len(messages)==1:
-            messages.append({"role": "user", "content": query})
+            messages.append({
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": query},
+                    *[
+                        {"type": "image_url", "image_url": {"url": image_url}} for image_url in image_urls
+                    ]
+                ]})
 
+        # print(messages[:1])
         return messages
-    def chat_stream(self, query: str, history_chat, collection_name : str | None  = None, file_ids : List | None = None):
+    def chat_stream(self, query: str,model_name: str, image_urls: List, history_chat, collection_name : str | None  = None, file_ids : List | None = None):
         """
         Chat with the bot
 
@@ -85,12 +95,13 @@ class ChatbotRAGvLLM:
             )
             logger.info(f"search time: {time.time()-start}")
 
-        messages = self._prepare_messages(query, history_chat, context)
+        messages = self._prepare_messages(query,model_name, image_urls, history_chat, context)
 
         response = self.client_chat_model.chat.completions.create(
                 model= self.chat_model_name,  # Đảm bảo model này đã được chạy trên vLLM
                 messages=messages,
-                max_tokens=1024,
+                # max_tokens=1024, # số token dành cho toàn bộ đoạn chat, nếu để quá ít, cấu trả lời có thể bị rỗng ''.
+                max_completion_tokens=500, # số token dành cho câu trả lời
                 temperature=0.1,
                 stream = True
         )
@@ -112,6 +123,7 @@ class ChatbotRAGvLLM:
 
         yield {"lst_img":lst_img_base64}
         yield "[END]"
+ 
 
 # Example usage
 def main():

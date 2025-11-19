@@ -2,7 +2,7 @@ import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__),'..','..')))
 from helpers.mongodb.get_mongodb import MongoDBConnections
-from tools.rag.indexing_milvus import IndexingMilvusOriVLLM
+from tools.rag.indexing_milvus import IndexingMilvusOri
 from configs import settings
 from loggers.logapp import logger
 from src.helpers.minio import minio_client
@@ -22,7 +22,7 @@ class CollectionTool:
         # Create indexes for better performance, index the field for whatever you search for.
         # self.collections_table.create_index([("_id",1),("collection_name", 1)])
     def create_collection(self,
-        indexing_milvus: IndexingMilvusOriVLLM,
+        indexing_milvus: IndexingMilvusOri,
         collection_name: str,
         user_id: str,
         status: str="active",
@@ -137,7 +137,7 @@ class CollectionTool:
             raise Exception(f"Failed to retrieve collection: {str(e)}")
 
     def owner_remove_collection(self, 
-        indexing_milvus: IndexingMilvusOriVLLM,
+        indexing_milvus: IndexingMilvusOri,
         collection_id: str,
         user_id: str,
     ) -> dict:

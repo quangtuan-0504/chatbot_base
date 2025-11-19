@@ -24,10 +24,12 @@ class ChatTool:
             logger.error(f"Error in get_chat: {str(e)}")
             raise f"Error in get_chat: {str(e)}"
     def create_chat(self,
-        question: str,
         user_id: str,
+        question: str,
+        image_urls: List[str],
         answer: str,
-        source: List          
+        source: List,
+        collection_id: str|None          
     ):
         try:
             current_time = get_gmt7_datetime_for_db().isoformat()
@@ -37,8 +39,29 @@ class ChatTool:
                 "create_at": current_time,
                 "update_at": current_time,
                 "history": [
-                    {"role": "user", "content": question},
-                    {"role": "assistant", "content": {"answer": answer, "source": source}}
+                    {
+                        "role": "user",
+                        "content": 
+                        {
+                            "message": [
+                                {"type": "text", "text": question},
+                                *[
+                                    {"type": "image_url", "image_url": {"url": image_url}} for image_url in image_urls
+                                ]
+                            ],
+                        }
+                    },
+                    {
+                        "role": "assistant", 
+                        "content": 
+                        {
+                            "message": [
+                                {"type": "text", "text": answer},
+                            ],
+                            "source": source,
+                            "collection_id": collection_id,
+                        }
+                    }
                 ]
             }
             new_chat = self.chats_table.insert_one(chat)
@@ -49,10 +72,39 @@ class ChatTool:
     def update_chat_history(self,
         chat_id: str,
         user_id: str,
-        new_items: List[Dict]
+        question: str,
+        image_urls: List[str],
+        answer: str,
+        source: List,
+        collection_id: str          
     ):  
         try:
             current_time = get_gmt7_datetime_for_db().isoformat()
+            new_items = [
+                {
+                    "role": "user",
+                    "content": 
+                    {
+                        "message": [
+                            {"type": "text", "text": question},
+                            *[
+                                {"type": "image_url", "image_url": {"url": image_url}} for image_url in image_urls
+                            ]
+                        ],
+                    }
+                },
+                {
+                    "role": "assistant", 
+                    "content": 
+                    {
+                        "message": [
+                            {"type": "text", "text": answer},
+                        ],
+                        "source": source,
+                        "collection_id": collection_id,
+                    }
+                }
+            ]
             result = self.chats_table.update_one(
                 {"user_id": user_id, "_id": ObjectId(chat_id)},
                 {

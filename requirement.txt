@@ -11,4 +11,63 @@ langchain-text-splitters == 0.3.8
 python-docx==1.1.2
 python-dotenv==1.0.1
 langchain-community == 0.3.25
-mar
+
+dotenv==0.9.9
+eventlet==0.39.0
+fastapi==0.115.12
+google-ai-generativelanguage==0.6.15
+google-api-core==2.24.2
+google-generativeai==0.8.5
+langchain==0.3.23
+langchain-anthropic==0.3.0
+langchain-community==0.3.11
+langchain-core==0.3.54
+langchain-google-genai==2.0.7
+langchain-milvus==0.1.7
+langchain-openai==0.2.12
+langchain-text-splitters==0.3.8
+marker-pdf==1.1.0
+minio==7.2.15
+openai==1.75.0
+pymilvus==2.5.6
+pymongo==4.10.1
+python-docx==1.1.2
+python-dotenv==1.1.0
+python-socketio==5.12.1
+python-multipart==0.0.20
+python-socketio==5.12.1 
+unstructured==0.18.3
+openpyxl==3.1.5
+passlib==1.7.4
+python-jose[cryptography]==3.5.0
+pydantic[email]
+uvicorn==0.35.0
+
+
+fastapi[standard]
+pymongo == 4.13.1
+openai == 1.107.1
+pymilvus == 2.5.11
+python-docx==1.1.2
+pillow==11.3.0
+minio==7.2.15
+unstructured==0.18.3
+openpyxl==3.1.5
+langchain-text-splitters==0.3.8
+langchain-community==0.3.25
+networkx==3.5
+pyjwt==2.10.1
+pip install "passlib[bcrypt]"
+
+1998  pip install fastapi[standard]
+2003  pip install pymongo==4.13.1
+2004  pip install openai==1.107.1
+2005  pip install pymilvus==2.5.11
+2006  pip install python-docx==1.1.2
+2008  pip install unstructured==0.18.3
+2009  pip install openpyxl==3.1.5
+2010  pip install langchain-text-splitters==0.3.8
+2011  pip install langchain-community= 0.3.25
+2018  pip install pillow
+2019  pip show pillow
+2022  pip install minio==7.2.15

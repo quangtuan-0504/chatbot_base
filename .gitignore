@@ -8,3 +8,5 @@ tmp.py
 tmp.json
 .blackboxrules
 *enhance_src
+*__pycache__
+.vscode

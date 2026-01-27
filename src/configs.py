@@ -1,6 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import Union, Dict, List
-from pymilvus import DataType, Function, FunctionType
+from typing import Dict, List
 from dotenv import load_dotenv
 from dotenv import find_dotenv
 import os
@@ -20,50 +19,97 @@ class Settings(BaseSettings):
         # extra="ignore"
     )
 
+
     app_name: str = "Chatbot Pro"
-    MILVUS_TYPE: str = "CLOUD" # "CLOUD" OR LOCAL CONTAINER : "DOCKER"
-    MILVUS_DB: str = "DB_milvus" # IF USE CONTAINER LOCAL , PLEASE SET DB(CLUSTER) NAME
+    # Admin account
+    ADMIN_USERNAME: str = os.getenv("ADMIN_USERNAME", "admin")
+    ADMIN_PASSWORD: str = os.getenv("ADMIN_PASSWORD", "admin")
+    ADMIN_EMAIL: str = os.getenv("ADMIN_EMAIL", "admin@namabank.com.vn")
 
-    MONGO_DB: str = "chatbotbase"
-    PATH_SAVE_FILE_UPLOAD: str = "./FOLDER_FILE_UPLOAD"
-    PATH_SAVE_IMG_OF_FILE: str = "./FOLDER_SAVE_IMG"
+    # JWT settings
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-change-this-in-production")
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
+    MILVUS_TYPE: str = "DOCKER" # "CLOUD" OR LOCAL CONTAINER : "DOCKER"
+    MILVUS_DB: str = "chatbottuan_v3" # IF USE CONTAINER LOCAL , PLEASE SET DB(CLUSTER) NAME
+    MILVUS_ENDPOINT: str = os.getenv("MILVUS_ENDPOINT")
+    MILVUS_TOKEN: str = os.getenv("MILVUS_TOKEN")
+    MILVUS_HOST: str = os.getenv("MILVUS_HOST")
+    MILVUS_PORT: str = os.getenv("MILVUS_PORT")
+    PREFIX_COLLECTION_NAME: str = "hello_"
+
+    MINIO_ENDPOINT: str = os.getenv("MINIO_ENDPOINT")
+    ACCESS_KEY_MINIO: str = os.getenv("ACCESS_KEY_MINIO")
+    SECRET_KEY_MINIO: str = os.getenv("SECRET_KEY_MINIO")
+    BUCKET_NAME: str = "chatbottuan-v3"
+    UPLOAD_FOLDER: str = "resources/documents" # folder in bucket to save file upload
+    DOCUMENT_IMAGES: str = "resources/images" # folder in bucket to save images of file
+
+    MONGO_URL: str = os.getenv("MONGO_URL")
+    MONGO_DB: str = "chatbottuan-v3"
+    MONGO_COLLECTION: List = [
+        "users",
+        "groups",
+        "user_group",
+        "chats",
+        "collections",
+        "user_collection",
+        "documents",
+    ]
+
+    MARKER_PDF_URL: str = "10.18.27.59:8060"
+ 
     DEVICE: int = 0
 
     # Structured configuration for chat and embedding models
     openai_api_key: str = os.getenv("OPENAI_API_KEY")
 
     chat_models: List[Dict[str, any]] = [
-        {
-            "name": "gpt-4o-mini",
-            "provider": "openai-api", # "vllm" or "openai-api"
-            "path": "",
-            "base_url": "",
-            "api_key": "",
-        },
         # {
-        #     "name": "aya-expanse-8b",
-        #     "provider": "vllm",
-        #     "path": "/LLM/LLMs/CohereForAI/aya-expanse-8b",
-        #     "base_url": "http://localhost:8000/v1",
-        #     "api_key": os.getenv("VLLM_API_KEY_aya_expanse_8b"),
-        # }
+        #     "name": "gpt-4o-mini", # Unique name for the model
+        #     "provider": "openai-api", # "vllm" or "openai-api"
+        #     "path": "",
+        #     "base_url": "",
+        #     "api_key": "",
+        # },
+        {
+            "name": "aya-expanse-8b",
+            "provider": "vllm",
+            "client": "openai-client",
+            "type_model": "llm",
+            "path": "/LLM/LLMs/kevinbazira/aya-expanse-8b-awq-4bit",
+            "base_url": "http://10.18.27.59:8000/v1",
+            "api_key": os.getenv("VLLM_API_KEY_aya_expanse_8b"),
+        },
+        {
+            "name": "qwen3-vl:2b",
+            "provider": "ollama",
+            "client": "openai-client",
+            "type_model": "vlm",
+            "path": "",
+            "base_url": "http://10.18.27.59:8025/v1",
+            "api_key": "",
+        }
     ]
 
     # Configuration for indexing
     embedding_model: Dict[str, any] = {
-        "name": "text-embedding-3-small",
-        "provider": "openai-api",
-        "path": "", #"/LLM/EmbeddingModels/BAAI/bge-m3",
-        "base_url": "",# "http://localhost:8005/v1",
+        "name": "BAAI/bge-m3",
+        "provider": "vllm",
+        "client": "openai-client",
+        "type_model": "vlm",
+        "path": "/LLM/EmbeddingModels/BAAI/bge-m3",
+        "base_url": "http://10.18.27.59:8001/v1",
         "api_key": "",  # Optional, if using vLLM or other providers
-        "dim": 1536,  # Dimension of the embedding vector
+        "dim": 1024,  # Dimension of the embedding vector
     }
 
     batch_size: int = 500
     nprobe: int = 10
     limit_per_qr: int = 50
-    nlist: int = 128  # Number of clusters for IVF index
+    nlist: int = 512  # Number of clusters for IVF index
 
     def __init__(self):
         super().__init__()

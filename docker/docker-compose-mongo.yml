@@ -11,7 +11,7 @@ services:
     ports:
       - "27017:27017"
     volumes:
-      - mongodb_data:/home/toannk2/docker_svc/volumes/mongodb
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/mongodb_data:/data/db
     networks:
       - mongo_network
 

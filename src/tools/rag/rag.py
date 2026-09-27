@@ -102,7 +102,7 @@ class ChatbotRAGvLLM:
                 messages=messages,
                 # max_tokens=1024, # số token dành cho toàn bộ đoạn chat, nếu để quá ít, cấu trả lời có thể bị rỗng ''.
                 max_completion_tokens=500, # số token dành cho câu trả lời
-                temperature=0.1,
+                # temperature=0.1,
                 stream = True
         )
 

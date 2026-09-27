@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import Dict, List
+from typing import Any, Dict, List
 from dotenv import load_dotenv
 from dotenv import find_dotenv
 import os
@@ -7,10 +7,10 @@ env_file = find_dotenv()
 load_dotenv(env_file)
 
 # https://fastapi.tiangolo.com/advanced/settings/
+# fixme: https://grok.com/chat/1bdaadba-9fef-4d58-880e-980897be0a97
+#        https://grok.com/chat/6c31a7d1-653e-4b70-bb33-daaca8bc9b53
 class Settings(BaseSettings):
     """Configuration settings for Milvus indexing and searchers.
-       fixme: https://grok.com/chat/1bdaadba-9fef-4d58-880e-980897be0a97
-       https://grok.com/chat/6c31a7d1-653e-4b70-bb33-daaca8bc9b53
     """
     # ignored if .env file is not set
     model_config = SettingsConfigDict(
@@ -66,44 +66,54 @@ class Settings(BaseSettings):
     # Structured configuration for chat and embedding models
     openai_api_key: str = os.getenv("OPENAI_API_KEY")
 
-    chat_models: List[Dict[str, any]] = [
-        # {
-        #     "name": "gpt-4o-mini", # Unique name for the model
-        #     "provider": "openai-api", # "vllm" or "openai-api"
-        #     "path": "",
-        #     "base_url": "",
-        #     "api_key": "",
-        # },
+    chat_models: List[Dict[str, Any]] = [
         {
-            "name": "aya-expanse-8b",
-            "provider": "vllm",
+            "name": "gpt-5.6-luna", # Unique name for the model
+            "provider": "openai-api", # "vllm" or "openai-api"
             "client": "openai-client",
             "type_model": "llm",
-            "path": "/LLM/LLMs/kevinbazira/aya-expanse-8b-awq-4bit",
-            "base_url": "http://10.18.27.59:8000/v1",
-            "api_key": os.getenv("VLLM_API_KEY_aya_expanse_8b"),
-        },
-        {
-            "name": "qwen3-vl:2b",
-            "provider": "ollama",
-            "client": "openai-client",
-            "type_model": "vlm",
             "path": "",
-            "base_url": "http://10.18.27.59:8025/v1",
-            "api_key": "",
-        }
+            "base_url": "",
+            "api_key": openai_api_key,
+        },
+        # {
+        #     "name": "aya-expanse-8b",
+        #     "provider": "vllm",
+        #     "client": "openai-client",
+        #     "type_model": "llm",
+        #     "path": "/LLM/LLMs/kevinbazira/aya-expanse-8b-awq-4bit",
+        #     "base_url": "http://10.18.27.59:8000/v1",
+        #     "api_key": os.getenv("VLLM_API_KEY_aya_expanse_8b"),
+        # },
+        # {
+        #     "name": "qwen3-vl:2b",
+        #     "provider": "ollama",
+        #     "client": "openai-client",
+        #     "type_model": "vlm",
+        #     "path": "",
+        #     "base_url": "http://10.18.27.59:8025/v1",
+        #     "api_key": "",
+        # }
     ]
 
     # Configuration for indexing
-    embedding_model: Dict[str, any] = {
-        "name": "BAAI/bge-m3",
-        "provider": "vllm",
+    embedding_model: Dict[str, Any] = {
+        # "name": "BAAI/bge-m3",
+        # "provider": "vllm",
+        # "client": "openai-client",
+        # "type_model": "vlm",
+        # "path": "/LLM/EmbeddingModels/BAAI/bge-m3",
+        # "base_url": "http://10.18.27.59:8001/v1",
+        # "api_key": "",  # Optional, if using vLLM or other providers
+        # "dim": 1024,  # Dimension of the embedding vector
+        "name": "text-embedding-3-small",
+        "provider": "openai-api",
         "client": "openai-client",
         "type_model": "vlm",
-        "path": "/LLM/EmbeddingModels/BAAI/bge-m3",
-        "base_url": "http://10.18.27.59:8001/v1",
-        "api_key": "",  # Optional, if using vLLM or other providers
-        "dim": 1024,  # Dimension of the embedding vector
+        "path": "",
+        "base_url": "",
+        "api_key": openai_api_key,  # Optional, if using vLLM or other providers
+        "dim": 1536,  # Dimension of the embedding vector
     }
 
     batch_size: int = 500

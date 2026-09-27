@@ -33,11 +33,10 @@ except Exception as e:
     logger.error(f"Failed to connect to Milvus: {str(e)}")
     raise
 
-
 # Get client openai-api, if use any model from openai
 if any(model["provider"] == "openai-api" for model in settings.chat_models + [settings.embedding_model]):
     openai_client = OpenAI(
-        api_key=settings.openai_api_key,
+        api_key=settings.openai_api_key
     )
 else:
     openai_client = None
@@ -49,7 +48,8 @@ try:
     if embedding_model["provider"] == "openai-api":
         openai_emb_client = openai_client
         embedding_model_name_or_path = embedding_model["name"]
-    elif embedding_model["provider"] == "vllm" or "ollama":
+        logger.info("Use provider openai-api for embedding documents")
+    elif embedding_model["provider"] in ("vllm", "ollama"):
         openai_emb_client = OpenAI(
             api_key=embedding_model["api_key"],
             base_url=embedding_model["base_url"],

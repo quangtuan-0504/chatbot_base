@@ -10,3 +10,5 @@ tmp.json
 *enhance_src
 *__pycache__
 .vscode
+docker/volumes*
+.DS_store

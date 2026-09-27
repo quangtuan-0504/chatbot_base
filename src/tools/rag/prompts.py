@@ -26,5 +26,6 @@ PROMPT_QWEN3_2BVL = (
 
 prompts: dict = {
     "aya-expanse-8b": {"rag":PROMPT_AYA_EXPANSE_8B, "normal": GENERAL_SYSTEM_PROMPT_AYA_EXPANSE_8B},
+    "gpt-5.6-luna": {"rag":PROMPT_AYA_EXPANSE_8B, "normal": GENERAL_SYSTEM_PROMPT_AYA_EXPANSE_8B},
     "qwen3-vl:2b": {"rag":PROMPT_QWEN3_2BVL, "normal": ""},
 }

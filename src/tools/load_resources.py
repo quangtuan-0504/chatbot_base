@@ -86,7 +86,7 @@ def load_resource()-> Dict:
         if embedding_model["provider"] == "openai-api":
             openai_emb_client = openai_client
             embedding_model_name_or_path = embedding_model["name"]
-        elif embedding_model["provider"] == "vllm" or "ollama":
+        elif embedding_model["provider"] in ("vllm", "ollama"):
             openai_emb_client = OpenAI(
                 api_key=embedding_model["api_key"],
                 base_url=embedding_model["base_url"],

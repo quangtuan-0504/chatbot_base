@@ -22,7 +22,7 @@ class ChatTool:
             return chat
         except Exception as e:
             logger.error(f"Error in get_chat: {str(e)}")
-            raise f"Error in get_chat: {str(e)}"
+            raise RuntimeError(f"Error in get_chat: {str(e)}")
     def create_chat(self,
         user_id: str,
         question: str,
@@ -68,7 +68,7 @@ class ChatTool:
             chat_id = str(new_chat.inserted_id)
             return chat_id
         except Exception as e:
-            raise f"create new chat in mongodb faild: {str(e)}"
+            raise RuntimeError(f"create new chat in mongodb faild: {str(e)}")
     def update_chat_history(self,
         chat_id: str,
         user_id: str,
@@ -114,7 +114,7 @@ class ChatTool:
             )
             return result.modified_count
         except Exception as e:
-            raise f"update chat history in mongodb faild: {str(e)}"
+            raise RuntimeError(f"update chat history in mongodb faild: {str(e)}")
     def delete_chat(self, chat_id: str, user_id: str):
         try:
             query = {"user_id": user_id, "_id": ObjectId(chat_id)}
@@ -123,7 +123,7 @@ class ChatTool:
                 return False
             return True
         except Exception as e:
-            raise f"Delete chat failed: {str(e)}"
+            raise RuntimeError(f"Delete chat failed: {str(e)}")
     def get_list_chat(self, user_id: str, search: str = None):
         try:
             query = {"user_id": user_id}
@@ -140,7 +140,7 @@ class ChatTool:
                 return []
             return lst_chat
         except Exception as e:
-            raise f"not found list chat of user: {user_id} in mongodb: {str(e)}"
+            raise RuntimeError(f"not found list chat of user: {user_id} in mongodb: {str(e)}")
     def rename_chat(self, chat_id: str, user_id: str, new_title: str):
         try:
             query = {"user_id": user_id, "_id": ObjectId(chat_id)}
@@ -155,4 +155,4 @@ class ChatTool:
                 return False
             return True
         except Exception as e:
-            raise f"Rename chat failed: {str(e)}"
+            raise RuntimeError(f"Rename chat failed: {str(e)}")

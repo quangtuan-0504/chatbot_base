@@ -74,7 +74,7 @@ def load_docx(
                 result_text += text + "\n"
             element_xml = element.xml
             if "<w:drawing>" in element_xml or "<w:pict>" in element_xml:
-                if "<a:blip>" in element_xml:
+                if "<a:blip " in element_xml or "<a:blip>" in element_xml:
                     if image_count < len(lst_name_img):
                         print("có ảnh")
                         result_text += f"![]({lst_name_img[image_count]})" + "\n"

@@ -233,16 +233,18 @@ async def stream_chat_websocket(websocket: WebSocket, token: str = None):
                 text = mes["content"]["message"][0]["text"]
                 if isinstance(text, str):
                     if "Nguồn:" in text:
-                        text = " ".join(text.split("Nguồn:")[0])
+                        text = text.split("Nguồn:")[0].strip()
                     elif "Source:" in text:
-                        text = " ".join(text.split("Source:")[0])
+                        text = text.split("Source:")[0].strip()
                     mes["content"]["message"][0]["text"] = text
                 history_chat_processed.append({
                     "role": mes["role"],
                     "content": mes["content"]["message"]
                 })
 
-        chat_model = resource[model_name] 
+        if model_name not in resource:
+            raise HTTPException(status_code=400, detail=f"Model {model_name} is not loaded")
+        chat_model = resource[model_name]
         answer = ""
         source = []
 
@@ -282,6 +284,8 @@ async def stream_chat_websocket(websocket: WebSocket, token: str = None):
                 elif isinstance(response_chunk, list):
                     source = response_chunk
                     await websocket.send_text(json.dumps({"type": "source", "data": response_chunk}))
+                elif isinstance(response_chunk, dict) and response_chunk.get("lst_img"):
+                    await websocket.send_text(json.dumps({"type": "source_images", "data": response_chunk["lst_img"]}))
         elif model_name in provider_model.get('huggingface-transformer',[]):
             pass
         else:

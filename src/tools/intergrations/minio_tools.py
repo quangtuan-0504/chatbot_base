@@ -32,6 +32,7 @@ def get_file_from_minio(minio_client: Minio, bucket_name: str ,object_name: str,
     """
     get file MinIO and return BytesIO object.
     """
+    response = None
     try:
         response = minio_client.get_object(
             bucket_name=bucket_name,
@@ -51,8 +52,9 @@ def get_file_from_minio(minio_client: Minio, bucket_name: str ,object_name: str,
         logger.error(f"Error fetching file from MinIO: {err}")
         raise
     finally:
-        response.close()
-        response.release_conn()
+        if response is not None:
+            response.close()
+            response.release_conn()
 def download_file_from_minio(minio_client: Minio, bucket_name: str, object_name: str, local_file_path: str):
     """
     Download file from MinIO to local.

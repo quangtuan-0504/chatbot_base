@@ -163,10 +163,10 @@ class IndexingMilvusOri:
                 return len(texts)
             else:
                 logger.warning("Collection not found")
-                raise "Collection not found"
+                raise RuntimeError("Collection not found")
         except Exception as e:
             logger.error(f"Error adding documents: {str(e)}")
-            raise f"Error adding documents: {str(e)}"
+            raise RuntimeError(f"Error adding documents: {str(e)}")
 
     def delete_collection(self, collection_name: str):
         try:
@@ -183,8 +183,8 @@ class IndexingMilvusOri:
         try:
             res = self.client_vector_store.delete(
                 collection_name=collection_name,
-                # highlight-next-line
-                filter= f"source in ['{file_id}']"
+                filter="file_id == {file_id}",
+                filter_params={"file_id": str(file_id)}
             )
             return f"successfully delete {res} entities"
         except Exception as e:

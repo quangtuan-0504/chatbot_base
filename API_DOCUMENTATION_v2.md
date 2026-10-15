@@ -849,6 +849,9 @@ Real-time chat streaming endpoint.
 // Source documents
 {"type": "source", "data": [{"file_name": "doc.pdf", "file_id": "file_id"}]}
 
+// Images of the source chunks (base64, only sent when RAG found images)
+{"type": "source_images", "data": ["<image_base64>", "..."]}
+
 // Chat ID (for new chats)
 {"type": "chat_id", "data": "new_chat_id"}
 

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, WebSocket, Depends, Query
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Query
 from typing import Annotated
 import json
 from fastapi.responses import JSONResponse
@@ -8,6 +8,7 @@ from src.data_models import *
 from src.utils.auth_utils import get_current_active_user, get_current_user_ws
 import time
 from src.configs import settings
+from src.loggers.logapp import logger
 
 router = APIRouter()
 
@@ -175,23 +176,30 @@ async def stream_chat_websocket(websocket: WebSocket, token: str = None):
 
     current_user = await get_current_user_ws(token)
     await websocket.accept()
+
+    async def send_error(message: str):
+        # Gửi đúng một event error rồi đóng kết nối; bỏ qua nếu client đã ngắt
+        try:
+            await websocket.send_text(json.dumps({"type": "error", "data": message}))
+            await websocket.close()
+        except (WebSocketDisconnect, RuntimeError):
+            pass
+
     try:
         # Nhận và kiểm tra dữ liệu từ client
         data = await websocket.receive_text()
         try:
             request = json.loads(data)
         except json.JSONDecodeError:
-            await websocket.send_text(json.dumps({"type": "error", "data": "Invalid JSON format"}))
-            await websocket.close()
-            raise HTTPException(status_code=400, detail="Invalid JSON format")
+            await send_error("Invalid JSON format")
+            return
 
         # Kiểm tra các trường bắt buộc
         required_fields = ["question", "modelName"]
         for field in required_fields:
             if field not in request or request[field] is None:
-                await websocket.send_text(json.dumps({"type": "error", "data": f"Missing or invalid field: {field}"}))
-                await websocket.close()
-                raise HTTPException(status_code=400, detail=f"Missing or invalid field: {field}")
+                await send_error(f"Missing or invalid field: {field}")
+                return
 
         user_id = current_user.get('id')
         question = request["question"]
@@ -202,34 +210,25 @@ async def stream_chat_websocket(websocket: WebSocket, token: str = None):
         images = request.get("images", [])
 
         if not question or not isinstance(question, str):
-            await websocket.send_text(json.dumps({"type": "error", "data": "Question is required and must be a string"}))
-            await websocket.close()
-            raise HTTPException(status_code=400, detail="Question is required and must be a string")
+            await send_error("Question is required and must be a string")
+            return
 
-        print("gửi request thành công")
-        print("chatId:", chat_id)
-        print(question)
-        print(type(collection_id))
-        print('collection_name_inVS:', collection_id)
-        print("file_ids:", file_ids)
+        logger.debug(f"chat-stream request: chat_id={chat_id}, collection_id={collection_id}, file_ids={file_ids}, model={model_name}")
 
         history_chat_processed = []
         if chat_id:
             chat = resource['chat_tool'].get_chat(chat_id=chat_id,user_id=user_id)
             if not chat:
-                await websocket.send_text(json.dumps({"type": "error", "data": "Chat not found or you don't have permission"}))
-                await websocket.close()
-                raise HTTPException(status_code=403, detail="Chat not found or you don't have permission")
+                await send_error("Chat not found or you don't have permission")
+                return
             history_chat = chat['history']
             if not history_chat:
-                await websocket.send_text(json.dumps({"type": "error", "data": "Chat history not found"}))
-                await websocket.close()
-                raise HTTPException(status_code=404, detail="Chat history not found")
+                await send_error("Chat history not found")
+                return
             for mes in history_chat:
                 if not isinstance(mes, dict) or "role" not in mes or "content" not in mes:
-                    await websocket.send_text(json.dumps({"type": "error", "data": "Invalid chat history format"}))
-                    await websocket.close()
-                    raise HTTPException(status_code=500, detail="Invalid chat history format")
+                    await send_error("Invalid chat history format")
+                    return
                 text = mes["content"]["message"][0]["text"]
                 if isinstance(text, str):
                     if "Nguồn:" in text:
@@ -243,7 +242,8 @@ async def stream_chat_websocket(websocket: WebSocket, token: str = None):
                 })
 
         if model_name not in resource:
-            raise HTTPException(status_code=400, detail=f"Model {model_name} is not loaded")
+            await send_error(f"Model {model_name} is not loaded")
+            return
         chat_model = resource[model_name]
         answer = ""
         source = []
@@ -289,9 +289,8 @@ async def stream_chat_websocket(websocket: WebSocket, token: str = None):
         elif model_name in provider_model.get('huggingface-transformer',[]):
             pass
         else:
-            await websocket.send_text(json.dumps({"type": "error", "data": f"Unsupported LLM: {model_name}"}))
-            await websocket.close()
-            raise HTTPException(status_code=400, detail=f"Unsupported LLM: {model_name}")
+            await send_error(f"Unsupported LLM: {model_name}")
+            return
 
         if chat_id is None or chat_id == "":
             chat_id = resource['chat_tool'].create_chat(
@@ -313,9 +312,8 @@ async def stream_chat_websocket(websocket: WebSocket, token: str = None):
                 collection_id=collection_id
             )
             if modified_count == 0:
-                await websocket.send_text(json.dumps({"type": "error", "data": "Chat not found or not updated"}))
-                await websocket.close()
-                raise HTTPException(status_code=404, detail="Chat not found or not updated")
+                await send_error("Chat not found or not updated")
+                return
 
         # Gửi chat_id đến client
         await websocket.send_text(json.dumps({"type": "chat_id", "data": chat_id}))
@@ -323,11 +321,8 @@ async def stream_chat_websocket(websocket: WebSocket, token: str = None):
         # Đóng kết nối WebSocket
         await websocket.close()
 
-    except HTTPException as e:
-        await websocket.send_text(json.dumps({"type": "error", "data": str(e.detail)}))
-        await websocket.close()
-        raise
+    except WebSocketDisconnect:
+        logger.info("chat-stream: client disconnected")
     except Exception as e:
-        await websocket.send_text(json.dumps({"type": "error", "data": f"Unexpected error: {str(e)}"}))
-        await websocket.close()
-        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+        logger.exception(f"chat-stream unexpected error: {e}")
+        await send_error(f"Unexpected error: {str(e)}")

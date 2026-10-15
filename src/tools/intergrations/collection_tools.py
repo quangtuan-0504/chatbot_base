@@ -210,7 +210,7 @@ class CollectionTool:
             error_delete_file_count += 1
 
         if error_delete_file_count == 0:
-            logger.error(f"Đã xóa {len(delete_objects_file)} file khỏi bucket {settings.BUCKET_NAME}")
+            logger.info(f"Đã xóa {len(delete_objects_file)} file khỏi bucket {settings.BUCKET_NAME}")
         else:
             logger.error(f"Có {error_delete_file_count} lỗi, xóa được {len(delete_objects_file) - error_delete_file_count} file")
 
@@ -242,11 +242,11 @@ class CollectionTool:
             error_delete_img_count += 1
 
         if error_delete_img_count == 0:
-            logger.error(f"Đã xóa {len(delete_objects_img)} img khỏi bucket {settings.BUCKET_NAME}")
+            logger.info(f"Đã xóa {len(delete_objects_img)} img khỏi bucket {settings.BUCKET_NAME}")
         else:
             logger.error(f"Có {error_delete_img_count} lỗi, xóa được {len(delete_objects_img) - error_delete_img_count} file")
 
-        logger.error(f"Thực hiện xóa file list image của collection khỏi bucket {settings.BUCKET_NAME}")
+        logger.info(f"Thực hiện xóa file list image của collection khỏi bucket {settings.BUCKET_NAME}")
         return {
             "id": collection_id,
             "collection_name": collection.get('collection_name'),

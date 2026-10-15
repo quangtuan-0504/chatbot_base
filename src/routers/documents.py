@@ -6,10 +6,10 @@ from urllib.parse import quote
 from dataclasses import asdict
 import os
 import uuid
-from ..tools.load_resources import resource
-from ..configs import settings
-from ..loggers.logapp import logger
-from ..data_models import *
+from src.tools.load_resources import resource
+from src.configs import settings
+from src.loggers.logapp import logger
+from src.data_models import *
 from src.utils.auth_utils import (
     get_current_active_user, 
     require_collection_editor_or_owner, 

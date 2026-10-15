@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException , Form
 from fastapi.responses import JSONResponse
 from dataclasses import asdict
-from ..tools.load_resources import resource
+from src.tools.load_resources import resource
 from src.data_models.collection_dataclass import (
     CreateCollectionRequest, RemoveCollectionRequest, ModifyCollectionRequest,
     ShareCollectionRequest, ShareCollectionToGroupRequest,
@@ -11,8 +11,8 @@ from src.data_models.collection_dataclass import (
 from src.utils.auth_utils import (
     get_current_active_user, require_creator_or_admin, require_admin,
 )
-from ..loggers.logapp import logger
-from ..data_models import *
+from src.loggers.logapp import logger
+from src.data_models import *
 
 
 router = APIRouter()

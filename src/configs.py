@@ -59,7 +59,16 @@ class Settings(BaseSettings):
         "documents",
     ]
 
-    MARKER_PDF_URL: str = "10.18.27.59:8060"
+    MARKER_PDF_URL: str = os.getenv("MARKER_PDF_URL", "10.18.27.59:8060")
+
+    # RAG parameters
+    RAG_MAX_COMPLETION_TOKENS: int = int(os.getenv("RAG_MAX_COMPLETION_TOKENS", 500)) # số token dành cho câu trả lời
+    RAG_SEARCH_LIMIT: int = int(os.getenv("RAG_SEARCH_LIMIT", 3)) # số chunk lấy ra khi search Milvus
+
+    # Chunking parameters
+    CHUNK_SIZE: int = int(os.getenv("CHUNK_SIZE", 600)) # pdf, docx
+    CHUNK_OVERLAP: int = int(os.getenv("CHUNK_OVERLAP", 200))
+    XLSX_CHUNK_SIZE: int = int(os.getenv("XLSX_CHUNK_SIZE", 1000)) # xlsx, txt, doc
  
     DEVICE: int = 0
 

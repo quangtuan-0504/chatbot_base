@@ -4,7 +4,7 @@ from dataclasses import dataclass, fields
 from typing import List, Optional, Any, Union, Dict
 from datetime import datetime
 from enum import Enum
-from .base_dataclass import BaseResponse, ResponseMessage
+from src.data_models.base_dataclass import BaseResponse, ResponseMessage
 from src.utils.timezone_utils import format_datetime_gmt7, get_gmt7_datetime_for_db
 
 

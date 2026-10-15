@@ -1,7 +1,5 @@
 import os
-import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__),'..')))
-from configs import settings
+from src.configs import settings
 from collections import defaultdict
 
 # def get_list_model_by_provider():

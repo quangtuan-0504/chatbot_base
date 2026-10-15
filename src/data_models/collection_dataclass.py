@@ -4,7 +4,7 @@ from fastapi import File, Form, UploadFile
 from dataclasses import dataclass
 from typing import List, Optional, Union
 from datetime import datetime
-from .base_dataclass import BaseResponse
+from src.data_models.base_dataclass import BaseResponse
 from src.utils.timezone_utils import format_datetime_gmt7, get_gmt7_datetime_for_db
 
 

@@ -15,8 +15,8 @@ from src.routers.auth import router as auth_router
 from src.routers.users import router as user_router
 from src.routers.groups import router as group_router
 
-from loggers.logapp import logger
-from configs import settings
+from src.loggers.logapp import logger
+from src.configs import settings
 
 logger.info(" Starting FastAPI application...")
 

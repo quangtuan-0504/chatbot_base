@@ -2,11 +2,11 @@ from urllib import request
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from dataclasses import asdict
-from ..tools.load_resources import resource
-from ..data_models.group_dataclass import *
-from ..data_models import BaseResponse, ResponseMessage
-from ..utils.auth_utils import get_current_active_user, require_admin, require_creator_or_admin
-from ..loggers.logapp import logger
+from src.tools.load_resources import resource
+from src.data_models.group_dataclass import *
+from src.data_models import BaseResponse, ResponseMessage
+from src.utils.auth_utils import get_current_active_user, require_admin, require_creator_or_admin
+from src.loggers.logapp import logger
 
 router = APIRouter()
 

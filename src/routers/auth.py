@@ -2,11 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.responses import JSONResponse
 from dataclasses import asdict
-from ..tools.load_resources import resource
-from ..data_models.auth_dataclass import *
-from ..data_models import BaseResponse, ResponseMessage
-from ..utils.auth_utils import *
-from ..loggers.logapp import logger
+from src.tools.load_resources import resource
+from src.data_models.auth_dataclass import *
+from src.data_models import BaseResponse, ResponseMessage
+from src.utils.auth_utils import *
+from src.loggers.logapp import logger
 
 router = APIRouter()
 

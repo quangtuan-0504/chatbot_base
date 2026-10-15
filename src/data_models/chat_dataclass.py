@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import List, Optional, Any, Union, Dict
 from datetime import datetime
 from enum import Enum
-from .base_dataclass import BaseResponse, ResponseMessage
+from src.data_models.base_dataclass import BaseResponse, ResponseMessage
 import time
 from pydantic import BaseModel
 __all__ = [

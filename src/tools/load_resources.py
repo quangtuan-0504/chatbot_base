@@ -1,24 +1,22 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 import os
-import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__),'..')))
-from loggers.logapp import logger
-from configs import settings
-from helpers.mongodb.get_mongodb import  init_mongo_db
-from helpers.milvus.milvus import get_milvus_connection
-from helpers.minio import minio_client
-from tools.intergrations.collection_tools import CollectionTool
-from tools.intergrations.chat_tools import ChatTool
-from tools.intergrations.document_tools import DocumentTool
-from tools.intergrations.user_tools import UserTool
-from tools.intergrations.group_tools import GroupTool
-from tools.intergrations.minio_tools import ensure_bucket_exists
-from utils.get_list_model_by_provider import get_list_model_by_provider
+from src.loggers.logapp import logger
+from src.configs import settings
+from src.helpers.mongodb.get_mongodb import  init_mongo_db
+from src.helpers.milvus.milvus import get_milvus_connection
+from src.helpers.minio import minio_client
+from src.tools.intergrations.collection_tools import CollectionTool
+from src.tools.intergrations.chat_tools import ChatTool
+from src.tools.intergrations.document_tools import DocumentTool
+from src.tools.intergrations.user_tools import UserTool
+from src.tools.intergrations.group_tools import GroupTool
+from src.tools.intergrations.minio_tools import ensure_bucket_exists
+from src.utils.get_list_model_by_provider import get_list_model_by_provider
 
 
-from tools.rag.indexing_milvus import  IndexingMilvusOri
-from tools.rag.rag import ChatbotRAGvLLM
+from src.tools.rag.indexing_milvus import  IndexingMilvusOri
+from src.tools.rag.rag import ChatbotRAGvLLM
 from typing import Dict
 from openai import OpenAI
 

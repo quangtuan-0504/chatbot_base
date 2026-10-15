@@ -1,8 +1,6 @@
-from configs import settings
+from src.configs import settings
 import os
-import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__),'..','..')))
-from loggers.logapp import logger
+from src.loggers.logapp import logger
 from dataclasses import dataclass
 from typing import Optional
 from pymongo import MongoClient

@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import Optional, List
-from .base_dataclass import BaseResponse
+from src.data_models.base_dataclass import BaseResponse
 from pydantic import BaseModel
 
 @dataclass

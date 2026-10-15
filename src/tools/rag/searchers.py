@@ -3,10 +3,8 @@ from typing import Tuple, List, Dict
 from pymilvus.exceptions import MilvusException
 from pymilvus import MilvusClient
 import os
-import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__),'..','..')))
-from loggers.logapp import logger
-from configs import settings
+from src.loggers.logapp import logger
+from src.configs import settings
 
 
 def find_overlap(prev: str, current: str) -> int:
@@ -43,7 +41,7 @@ def vicinity_search(
     client: MilvusClient,
     query_vector: List[float],
     collection_name: str,
-    limit: int = 3,
+    limit: int = settings.RAG_SEARCH_LIMIT,
     file_ids: List[str] = None,
     metric_type: str = "COSINE",
     offset: int = 0,

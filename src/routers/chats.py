@@ -3,11 +3,11 @@ from typing import Annotated
 import json
 from fastapi.responses import JSONResponse
 from dataclasses import asdict
-from ..tools.load_resources import resource, provider_model
-from ..data_models import *
-from ..utils.auth_utils import get_current_active_user, get_current_user_ws
+from src.tools.load_resources import resource, provider_model
+from src.data_models import *
+from src.utils.auth_utils import get_current_active_user, get_current_user_ws
 import time
-from ..configs import settings
+from src.configs import settings
 
 router = APIRouter()
 

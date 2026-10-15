@@ -1,19 +1,16 @@
-import sys
 import os
 import time
-sys.path.append(os.path.abspath(os.path.join(
-    os.path.dirname(__file__), '..', '..'))) # thư mục cha của file hiện tại nhảy ra 2 nấc "src\tools\rag\..\.."
 
-from tools.rag.prompts import prompts
+from src.tools.rag.prompts import prompts
 from typing import List, Dict, Optional, Tuple, Generator
 from openai import OpenAI
 from pymilvus import MilvusClient
 from collections import defaultdict
-from tools.rag.searchers import vicinity_search
-from tools.intergrations.minio_tools import get_file_from_minio
-from loggers.logapp import logger
-from configs import settings
-from helpers.minio import minio_client
+from src.tools.rag.searchers import vicinity_search
+from src.tools.intergrations.minio_tools import get_file_from_minio
+from src.loggers.logapp import logger
+from src.configs import settings
+from src.helpers.minio import minio_client
 
 
 
@@ -101,7 +98,7 @@ class ChatbotRAGvLLM:
                 model= self.chat_model_name,  # Đảm bảo model này đã được chạy trên vLLM
                 messages=messages,
                 # max_tokens=1024, # số token dành cho toàn bộ đoạn chat, nếu để quá ít, cấu trả lời có thể bị rỗng ''.
-                max_completion_tokens=500, # số token dành cho câu trả lời
+                max_completion_tokens=settings.RAG_MAX_COMPLETION_TOKENS, # số token dành cho câu trả lời
                 # temperature=0.1,
                 stream = True
         )

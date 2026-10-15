@@ -3,12 +3,10 @@ from langchain_community.document_loaders import (
     UnstructuredWordDocumentLoader,
 )
 import os
-import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__),'..','..')))
-from . import load_docx, load_pdf, load_xlsx
-from tools.intergrations.minio_tools import download_file_from_minio
-from helpers.minio import minio_client
-from configs import settings
+from src.tools.document_processing import load_docx, load_pdf, load_xlsx
+from src.tools.intergrations.minio_tools import download_file_from_minio
+from src.helpers.minio import minio_client
+from src.configs import settings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 def load_document(
         file_path : str,
@@ -75,7 +73,7 @@ def load_document(
             )
             loader = TextLoader(temp_file_path)
             docs = loader.load()
-            text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+            text_splitter = RecursiveCharacterTextSplitter(chunk_size=settings.XLSX_CHUNK_SIZE, chunk_overlap=settings.CHUNK_OVERLAP)
             docs = text_splitter.split_documents(docs)
             os.unlink(temp_file_path)
         elif file_path.endswith('.doc'):
@@ -87,7 +85,7 @@ def load_document(
             )
             loader = UnstructuredWordDocumentLoader(temp_file_path)
             docs = loader.load()
-            text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+            text_splitter = RecursiveCharacterTextSplitter(chunk_size=settings.XLSX_CHUNK_SIZE, chunk_overlap=settings.CHUNK_OVERLAP)
             docs = text_splitter.split_documents(docs)
             os.unlink(temp_file_path)
         else:

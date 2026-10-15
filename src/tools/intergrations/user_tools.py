@@ -1,10 +1,8 @@
 import os
-import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__),'..','..')))
-from helpers.mongodb.get_mongodb import MongoDBConnections
+from src.helpers.mongodb.get_mongodb import MongoDBConnections
 from bson import ObjectId
 from src.utils.timezone_utils import get_gmt7_datetime_for_db
-from loggers.logapp import logger
+from src.loggers.logapp import logger
 import re
 import bcrypt
 

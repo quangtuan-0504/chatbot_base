@@ -1,10 +1,8 @@
 import os
-import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__),'..','..')))
-from helpers.mongodb.get_mongodb import MongoDBConnections
-from tools.rag.indexing_milvus import IndexingMilvusOri
-from configs import settings
-from loggers.logapp import logger
+from src.helpers.mongodb.get_mongodb import MongoDBConnections
+from src.tools.rag.indexing_milvus import IndexingMilvusOri
+from src.configs import settings
+from src.loggers.logapp import logger
 from src.helpers.minio import minio_client
 from minio.deleteobjects import DeleteObject
 from bson import ObjectId

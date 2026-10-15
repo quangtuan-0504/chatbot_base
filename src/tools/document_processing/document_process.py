@@ -1,11 +1,9 @@
 import time
 import os
-import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__),'..')))
-from loggers.logapp import logger
-from rag.indexing_milvus import IndexingMilvusOri
+from src.loggers.logapp import logger
+from src.tools.rag.indexing_milvus import IndexingMilvusOri
 from pymongo.collection import Collection
-from ...configs import settings
+from src.configs import settings
 
 
 def process_file(

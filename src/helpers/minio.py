@@ -1,10 +1,8 @@
 from minio import Minio
 from minio.error import S3Error
 import os
-import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__),'..')))
-from loggers.logapp import logger
-from configs import settings
+from src.loggers.logapp import logger
+from src.configs import settings
 
 # config MinIO
 MINIO_ENDPOINT = settings.MINIO_ENDPOINT

@@ -1,3 +1,3 @@
-from .process_pdf_file import load_pdf
-from .process_xlsx_file import load_xlsx
-from .process_docx_file import load_docx
+from src.tools.document_processing.process_pdf_file import load_pdf
+from src.tools.document_processing.process_xlsx_file import load_xlsx
+from src.tools.document_processing.process_docx_file import load_docx

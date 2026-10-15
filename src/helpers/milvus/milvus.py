@@ -1,11 +1,8 @@
 import os 
 from pymilvus import MilvusClient,db, connections
-import sys
 import os
-sys.path.append(os.path.abspath(os.path.join(
-    os.path.dirname(__file__), '..', '..')))
-from configs import settings
-from loggers.logapp import logger
+from src.configs import settings
+from src.loggers.logapp import logger
 
 def get_milvus_connection_args():
     connection_type  = settings.MILVUS_TYPE

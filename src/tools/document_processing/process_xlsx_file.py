@@ -3,18 +3,16 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 from typing import List
 import os
-import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__),'..','..')))
-from helpers.minio import minio_client
-from tools.intergrations.minio_tools import download_file_from_minio
-from configs import settings
+from src.helpers.minio import minio_client
+from src.tools.intergrations.minio_tools import download_file_from_minio
+from src.configs import settings
 
 
 def load_xlsx(file_path: str,
               file_id: str,
               collection_id: str,
-              chunk_size: int = 1000,
-              chunk_overlap: int = 200
+              chunk_size: int = settings.XLSX_CHUNK_SIZE,
+              chunk_overlap: int = settings.CHUNK_OVERLAP
               ) -> List[Document]:
     temp_file_path = download_file_from_minio(
         minio_client= minio_client,

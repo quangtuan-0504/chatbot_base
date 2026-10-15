@@ -191,7 +191,7 @@ class DocumentTool:
                     error_count += 1
 
                 if error_count == 0:
-                    logger.error(f"Đã xóa {len(delete_objects)} file khỏi bucket {settings.BUCKET_NAME}")
+                    logger.info(f"Đã xóa {len(delete_objects)} file khỏi bucket {settings.BUCKET_NAME}")
                 else:
                     logger.error(f"Có {error_count} lỗi, xóa được {len(delete_objects) - error_count} file")
 

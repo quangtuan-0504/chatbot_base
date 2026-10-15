@@ -68,7 +68,7 @@ class Settings(BaseSettings):
 
     chat_models: List[Dict[str, Any]] = [
         {
-            "name": "gpt-5.6-luna", # Unique name for the model
+            "name": "gpt-6-luna", # Unique name for the model
             "provider": "openai-api", # "vllm" or "openai-api"
             "client": "openai-client",
             "type_model": "llm",

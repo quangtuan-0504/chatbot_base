@@ -1,8 +1,6 @@
-from collections import defaultdict
-from typing import Tuple, List, Dict
+from typing import Tuple, List, Dict, Optional
 from pymilvus.exceptions import MilvusException
 from pymilvus import MilvusClient
-import os
 from src.loggers.logapp import logger
 from src.configs import settings
 
@@ -14,29 +12,34 @@ def find_overlap(prev: str, current: str) -> int:
             return overlap
     return 0
 
-def merge_strings(texts: List[str]) -> str:
-    """Merge a list of strings, removing overlapping parts between adjacent strings."""
-    if not texts:
-        return ""
+def merge_chunks(chunks: List[Tuple[int, str]]) -> str:
+    """Merge (chunk_index, text) pairs sorted by index.
+    Only adjacent chunks share overlap; a gap between indices is marked with '...'."""
+    result = ""
+    prev_index, prev_text = None, ""
 
-    result = texts[0]
-
-    for i in range(1, len(texts)):
-        overlap = find_overlap(result, texts[i])
-        result += texts[i][overlap:]
+    for index, text in chunks:
+        if prev_index is None:
+            result = text
+        elif index == prev_index + 1:
+            result += text[find_overlap(prev_text, text):]
+        else:
+            result += "\n...\n" + text
+        prev_index, prev_text = index, text
 
     return result
 
-def merge_document_texts(doc_text_map: Dict[str, List[str]]) -> str:
+def merge_document_texts(documents: List[Tuple[str, List[Tuple[int, str]]]]) -> str:
     """Merge text chunks from multiple documents with document attribution."""
     result = []
 
-    for file_name, text_chunks in doc_text_map.items():
-        merged_text = merge_strings(text_chunks)
+    for file_name, chunks in documents:
+        merged_text = merge_chunks(chunks)
         attribution = f"\nThe above information is taken from file: {file_name}\n\n"
         result.append(merged_text + attribution)
 
     return "".join(result)
+
 def vicinity_search(
     client: MilvusClient,
     query_vector: List[float],
@@ -46,10 +49,12 @@ def vicinity_search(
     metric_type: str = "COSINE",
     offset: int = 0,
     upper_bound: int = 1,
-    lower_bound: int = 1
-) -> Tuple[str, List]:
+    lower_bound: int = 1,
+    score_threshold: Optional[float] = settings.RAG_SCORE_THRESHOLD,
+) -> Tuple[str, List[Dict[str, str]], List[str]]:
     """
     Search for documents in the vector store and retrieve surrounding text chunks.
+    Returns (merged context, relevant files, unique image paths).
     """
     if not collection_name.startswith(settings.PREFIX_COLLECTION_NAME):
         collection_name = settings.PREFIX_COLLECTION_NAME+collection_name
@@ -60,14 +65,6 @@ def vicinity_search(
         if not client.has_collection(collection_name):
             logger.warning(f"Collection {collection_name} does not exist")
             return "", [], []
-
-        # Get collection statistics
-        # stats = client.get_collection_stats(collection_name)
-        # row_count = stats.get('row_count', 0)
-
-        # if row_count == 0:
-        #     logger.warning(f"Collection {collection_name} is empty")
-        #     return "", [], []
 
         # Ensure collection is loaded
         client.load_collection(collection_name)
@@ -83,68 +80,75 @@ def vicinity_search(
             limit=limit,
             filter=expr,
             filter_params=filter_params,
-            output_fields=["text", "file_name", "file_id", "chunk_index_in_file"],
+            output_fields=["file_name", "file_id", "chunk_index_in_file"],
             search_params={
                 "metric_type": metric_type,
+                "params": {"nprobe": settings.nprobe},
                 "offset": offset,
             }
         )
 
-    except MilvusException as e: 
-        logger.error(f"Milvus Error: {str(e)}")
+    except MilvusException as e:
+        logger.error(f"Milvus Error when searching {collection_name}: {str(e)}")
         return "", [], []
     except Exception as e:
         logger.error(f"Unknown error: {str(e)}")
         raise e
 
-    # Rest of your code remains the same...
-    logger.debug(f"Found {len(search_results)} results in vector search")
+    hits = [hit for hits_group in search_results for hit in hits_group]
+    logger.info(f"Vector search scores: {[round(hit['distance'], 4) for hit in hits]}")
 
-    # Process search results
-    relevant_files = []
+    # COSINE / IP: higher is more similar, so drop hits below the threshold
+    if score_threshold is not None and metric_type in ("COSINE", "IP"):
+        hits = [hit for hit in hits if hit["distance"] >= score_threshold]
+    logger.debug(f"Kept {len(hits)} results after score threshold {score_threshold}")
+
+    if not hits:
+        return "", [], []
+
+    # Group vicinity indices by file, keeping files in order of their best hit
+    files: Dict[str, Dict] = {}
+    for hit in hits:
+        entity = hit["entity"]
+        chunk_index = entity["chunk_index_in_file"]
+        file = files.setdefault(
+            entity["file_id"],
+            {"file_name": entity["file_name"], "indices": set()}
+        )
+        file["indices"].update(range(max(chunk_index - lower_bound, 0), chunk_index + upper_bound + 1))
+
+    documents = []
     lst_img = []
-    lst_img_unique = []
-    document_chunks = defaultdict(list)
-
-    for hits_group in search_results:
-        for hit in hits_group:
-            # Get chunk information
-            chunk_index = hit['entity']['chunk_index_in_file']
-            file_id = hit["entity"]["file_id"]
-            file_name = hit["entity"]["file_name"]
-
-            # Calculate vicinity range
-            vicinity_indices = (
-                [chunk_index - i for i in range(lower_bound, 0, -1)] +
-                [chunk_index + i for i in range(0, upper_bound + 1)]
-            )
-
-            # Query for chunks in vicinity
-            vicinity_filter = f'file_id == "{file_id}" && chunk_index_in_file in {vicinity_indices}'
+    for file_id, file in files.items():
+        # One query per file for all vicinity chunks
+        try:
             vicinity_results = client.query(
                 collection_name=collection_name,
-                filter=vicinity_filter,
-                output_fields=["text", "file_name", "file_id", "chunk_index_in_file", "lst_img_of_chunks"],
+                filter="file_id == {file_id} && chunk_index_in_file in {indices}",
+                filter_params={"file_id": file_id, "indices": sorted(file["indices"])},
+                output_fields=["text", "chunk_index_in_file", "lst_img_of_chunks"],
             )
+        except MilvusException as e:
+            logger.error(f"Milvus Error when querying vicinity of file {file_id}: {str(e)}")
+            continue
 
-            # Add chunks to document map
-            for vicinity_chunk in vicinity_results:
-                document_chunks[file_name].append(vicinity_chunk['text'])
-                lst_img.extend(vicinity_chunk['lst_img_of_chunks'])
-            # Get unique image
-            for path_img in lst_img:
-                if path_img not in lst_img_unique:
-                    lst_img_unique.append(path_img)
+        # Dedupe by chunk index and sort, since query results have no guaranteed order
+        chunks_by_index = {chunk["chunk_index_in_file"]: chunk for chunk in vicinity_results}
+        sorted_chunks = [chunks_by_index[index] for index in sorted(chunks_by_index)]
 
-            # Track unique files
-            if not any(file['file_id'] == file_id for file in relevant_files):
-                relevant_files.append({
-                    'file_name': file_name,
-                    'file_id': file_id
-                })
+        documents.append((
+            file["file_name"],
+            [(chunk["chunk_index_in_file"], chunk["text"]) for chunk in sorted_chunks]
+        ))
+        for chunk in sorted_chunks:
+            lst_img.extend(chunk["lst_img_of_chunks"] or [])
+
+    relevant_files = [
+        {"file_name": file["file_name"], "file_id": file_id}
+        for file_id, file in files.items()
+    ]
 
     # Merge text chunks
-    merged_text = merge_document_texts(document_chunks)
+    merged_text = merge_document_texts(documents)
 
-    return merged_text, relevant_files, lst_img_unique
- 
+    return merged_text, relevant_files, list(dict.fromkeys(lst_img))

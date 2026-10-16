@@ -66,6 +66,7 @@ class Settings(BaseSettings):
     RAG_SEARCH_LIMIT: int = int(os.getenv("RAG_SEARCH_LIMIT", 3)) # số chunk lấy ra khi search Milvus
     RAG_SCORE_THRESHOLD: float = float(os.getenv("RAG_SCORE_THRESHOLD", 0.3)) # bỏ chunk có cosine similarity thấp hơn ngưỡng
     RAG_MAX_IMAGES: int = int(os.getenv("RAG_MAX_IMAGES", 5)) # số ảnh tối đa trả về, ưu tiên ảnh của chunk tìm thấy trực tiếp
+    RAG_REWRITE_HISTORY_TURNS: int = int(os.getenv("RAG_REWRITE_HISTORY_TURNS", 3)) # số lượt hội thoại (user + assistant) dùng để viết lại câu hỏi trước khi search, 0 = tắt
 
     # Chunking parameters
     CHUNK_SIZE: int = int(os.getenv("CHUNK_SIZE", 600)) # pdf, docx

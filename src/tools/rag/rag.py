@@ -1,7 +1,7 @@
 import os
 import time
 
-from src.tools.rag.prompts import prompts
+from src.tools.rag.prompts import prompts, QUERY_REWRITE_PROMPT
 from typing import List, Dict, Optional, Tuple, Generator
 from openai import OpenAI
 from pymilvus import MilvusClient
@@ -61,6 +61,45 @@ class ChatbotRAGvLLM:
 
         # print(messages[:1])
         return messages
+    def _rewrite_query(self, query: str, history_chat: List[Dict]) -> str:
+        """
+        Rewrite a follow-up question into a standalone question using the last turns of history.
+        Only used for vector search; falls back to the original query on any failure.
+        """
+        n_messages = settings.RAG_REWRITE_HISTORY_TURNS * 2 # 1 turn = user + assistant
+        if not history_chat or n_messages <= 0:
+            return query
+
+        lines = []
+        for message in history_chat[-n_messages:]:
+            content = message.get("content", "")
+            if isinstance(content, list): # multimodal content: keep text parts only
+                content = " ".join(part.get("text", "") for part in content if part.get("type") == "text")
+            if content:
+                lines.append(f"{message.get('role', 'user')}: {content}")
+        if not lines:
+            return query
+
+        try:
+            response = self.client_chat_model.chat.completions.create(
+                model=self.chat_model_name,
+                messages=[{
+                    "role": "user",
+                    "content": QUERY_REWRITE_PROMPT.format(history_="\n".join(lines), query_=query),
+                }],
+                max_completion_tokens=200,
+                stream=False,
+            )
+            rewritten = (response.choices[0].message.content or "").strip()
+        except Exception as e:
+            logger.warning(f"query rewrite failed, using original query: {e}")
+            return query
+
+        if not rewritten:
+            logger.warning("query rewrite returned empty, using original query")
+            return query
+        logger.info(f"rewritten query: {query!r} -> {rewritten!r}")
+        return rewritten
     def chat_stream(self, query: str,model_name: str, image_urls: List, history_chat, collection_name : str | None  = None, file_ids : List | None = None):
         """
         Chat with the bot
@@ -77,8 +116,9 @@ class ChatbotRAGvLLM:
         if collection_name:
             logger.info(f"have collection")
             start = time.time()
+            search_query = self._rewrite_query(query, history_chat)
             response_emb = self.client_embedding_model.embeddings.create(
-                input=query,
+                input=search_query,
                 model=self.embedding_model_name
             )
             # print(response_emb)

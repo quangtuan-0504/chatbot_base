@@ -1,4 +1,5 @@
-from typing import Tuple, List, Dict, Optional
+import re
+from typing import Tuple, List, Dict, Optional, Set
 from pymilvus.exceptions import MilvusException
 from pymilvus.client.types import LoadState
 from pymilvus import MilvusClient
@@ -8,10 +9,41 @@ from src.configs import settings
 
 # BM25 sparse vector field generated from 'text' (see indexing_milvus.build_schema_and_index)
 SPARSE_FIELD = "sparse"
+HIT_OUTPUT_FIELDS = ["file_name", "file_id", "chunk_index_in_file"]
+STOPWORDS = frozenset(settings.VI_STOPWORDS)
 
 
 class VectorSearchError(RuntimeError):
     """Raised when Milvus fails during search, so callers can tell it apart from 'no relevant documents'."""
+
+
+def rrf_fuse(ranked_lists: List[List[Dict]], k: int, limit: int) -> List[Dict]:
+    """Reciprocal Rank Fusion: score = sum(1 / (k + rank)) over lists, keyed by (file_id, chunk_index_in_file)."""
+    scores: Dict[Tuple[str, int], float] = {}
+    hits_by_key: Dict[Tuple[str, int], Dict] = {}
+    for hits in ranked_lists:
+        for rank, hit in enumerate(hits, start=1):
+            key = (hit["entity"]["file_id"], hit["entity"]["chunk_index_in_file"])
+            scores[key] = scores.get(key, 0.0) + 1.0 / (k + rank)
+            hits_by_key.setdefault(key, hit)
+    ranked = sorted(scores, key=scores.get, reverse=True)[:limit]
+    logger.info(f"RRF fused: {[(key, round(scores[key], 4)) for key in ranked]}")
+    return [hits_by_key[key] for key in ranked]
+
+def analyze_terms(text: str) -> Set[str]:
+    """Python approximation of the BM25 analyzer (standard tokenizer, lowercase, stopwords)."""
+    return {term for term in re.findall(r"[^\W_]+", text.lower()) if term not in STOPWORDS}
+
+def term_ratio(query_terms: Set[str], text: str) -> float:
+    """Share of query terms present in text. Vietnamese is split into syllables, so a single shared
+    syllable already gives a BM25 score; this ratio filters such accidental matches."""
+    if not query_terms:
+        return 0.0
+    return len(query_terms & analyze_terms(text)) / len(query_terms)
+
+def has_sparse_field(client: MilvusClient, collection_name: str) -> bool:
+    """Collections created before hybrid search have no BM25 field and are searched dense-only."""
+    return any(field["name"] == SPARSE_FIELD for field in client.describe_collection(collection_name)["fields"])
 
 
 def find_overlap(prev: str, current: str) -> int:
@@ -68,9 +100,12 @@ def vicinity_search(
     lower_bound: int = 1,
     score_threshold: Optional[float] = settings.RAG_SCORE_THRESHOLD,
     max_images: int = settings.RAG_MAX_IMAGES,
+    query_text: Optional[str] = None,
 ) -> Tuple[str, List[Dict[str, str]], List[str]]:
     """
     Search for documents in the vector store and retrieve surrounding text chunks.
+    With query_text and a collection that has the BM25 field, dense and BM25 results are fused with RRF;
+    otherwise the search is dense-only.
     Returns (merged context, relevant files, image paths).
     Raises VectorSearchError if Milvus fails.
     """
@@ -88,35 +123,68 @@ def vicinity_search(
         if client.get_load_state(collection_name)["state"] != LoadState.Loaded:
             client.load_collection(collection_name)
 
+        hybrid = bool(settings.RAG_HYBRID_ENABLED and query_text and query_text.strip()
+                      and has_sparse_field(client, collection_name))
+        candidates = max(limit, settings.RAG_HYBRID_CANDIDATES) if hybrid else limit
+
         # Set up search filter if file IDs are provided
         expr = "file_id in {list_file}" if file_ids else None
         filter_params = {"list_file": file_ids} if file_ids else None
 
-        # Search for relevant chunks
-        search_results = client.search(
+        # Dense search for relevant chunks
+        dense_results = client.search(
             collection_name=collection_name,
             data=[query_vector],
-            limit=limit,
+            anns_field="vector",
+            limit=candidates,
             filter=expr,
             filter_params=filter_params,
-            output_fields=["file_name", "file_id", "chunk_index_in_file"],
+            output_fields=HIT_OUTPUT_FIELDS,
             search_params={
                 "metric_type": metric_type,
-                "params": {"nprobe": settings.nprobe},
+                "params": {"nprobe": settings.nprobe, "ef": max(64, candidates)},
                 "offset": offset,
             }
         )
+
+        # BM25 search on the raw query text
+        sparse_results = []
+        if hybrid:
+            sparse_results = client.search(
+                collection_name=collection_name,
+                data=[query_text],
+                anns_field=SPARSE_FIELD,
+                limit=candidates,
+                filter=expr,
+                filter_params=filter_params,
+                output_fields=HIT_OUTPUT_FIELDS + ["text"],
+                search_params={"metric_type": "BM25", "offset": offset},
+            )
     except MilvusException as e:
         logger.error(f"Milvus Error when searching {collection_name}: {str(e)}")
         raise VectorSearchError(str(e)) from e
 
-    hits = [hit for hits_group in search_results for hit in hits_group]
-    logger.info(f"Vector search scores: {[round(hit['distance'], 4) for hit in hits]}")
+    dense_hits = [hit for hits_group in dense_results for hit in hits_group]
+    logger.info(f"Vector search scores: {[round(hit['distance'], 4) for hit in dense_hits]}")
 
     # COSINE / IP: higher is more similar, so drop hits below the threshold
     if score_threshold is not None and metric_type in ("COSINE", "IP"):
-        hits = [hit for hit in hits if hit["distance"] >= score_threshold]
-    logger.debug(f"Kept {len(hits)} results after score threshold {score_threshold}")
+        dense_hits = [hit for hit in dense_hits if hit["distance"] >= score_threshold]
+    logger.debug(f"Kept {len(dense_hits)} dense results after score threshold {score_threshold}")
+
+    if hybrid:
+        sparse_hits = [hit for hits_group in sparse_results for hit in hits_group]
+        query_terms = analyze_terms(query_text)
+        ratios = [term_ratio(query_terms, hit["entity"]["text"]) for hit in sparse_hits]
+        logger.info(f"BM25 search scores (score, term ratio): "
+                    f"{[(round(hit['distance'], 4), round(ratio, 2)) for hit, ratio in zip(sparse_hits, ratios)]}")
+        sparse_hits = [
+            hit for hit, ratio in zip(sparse_hits, ratios)
+            if hit["distance"] >= settings.RAG_BM25_MIN_SCORE and ratio >= settings.RAG_BM25_MIN_TERM_RATIO
+        ]
+        hits = rrf_fuse([dense_hits, sparse_hits], k=settings.RAG_RRF_K, limit=limit)
+    else:
+        hits = dense_hits[:limit]
 
     if not hits:
         return "", [], []

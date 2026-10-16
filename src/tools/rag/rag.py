@@ -128,7 +128,8 @@ class ChatbotRAGvLLM:
                 client = self.milvus_client ,
                 query_vector = query_vector,
                 file_ids = file_ids,
-                collection_name = collection_name 
+                collection_name = collection_name,
+                query_text = search_query
             )
             logger.info(f"search time: {time.time()-start}")
 

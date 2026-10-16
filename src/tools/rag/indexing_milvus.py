@@ -6,7 +6,7 @@ os.environ['TORCH_USE_CUDA_DSA'] = "1"
 from tqdm import tqdm
 
 
-from pymilvus import DataType
+from pymilvus import DataType, Function, FunctionType
 # Bản pymilvus 2.5.x so với 2.2.x chỉ bổ sung thêm các chức năng mới thuận tiện hơn chứ không xóa các chức năng cũ nha
 from src.tools.document_processing.get_documents import load_document
 from src.configs import settings
@@ -14,7 +14,81 @@ from pymilvus import connections, db, MilvusClient
 from openai import OpenAI
 import time
 from src.loggers.logapp import logger
+from src.tools.rag.searchers import SPARSE_FIELD
 
+
+# Analyzer for BM25: 'standard' splits Vietnamese into syllables, lowercase, drop common stopwords
+BM25_ANALYZER_PARAMS = {
+    "tokenizer": "standard",
+    "filter": ["lowercase", {"type": "stop", "stop_words": settings.VI_STOPWORDS}],
+}
+
+
+def build_schema_and_index(client: MilvusClient):
+    """Schema and index params for a chunk collection: dense vector + BM25 sparse vector generated from 'text'.
+    Shared by create_collection and the hybrid migration script."""
+    # Create schema
+    schema = client.create_schema(
+        auto_id=True,
+        enable_dynamic_field=True,
+    )
+    # Add fields to schema
+    schema.add_field(field_name="pk", datatype=DataType.INT64, is_primary=True)
+    schema.add_field(field_name="vector", datatype=DataType.FLOAT_VECTOR, dim=settings.embedding_model['dim'])
+    schema.add_field(field_name="text", datatype=DataType.VARCHAR, max_length=65535,
+                     enable_analyzer=True, analyzer_params=BM25_ANALYZER_PARAMS)
+    schema.add_field(field_name=SPARSE_FIELD, datatype=DataType.SPARSE_FLOAT_VECTOR)
+    schema.add_field(field_name="lst_img_of_chunks", datatype=DataType.ARRAY, element_type=DataType.VARCHAR, max_length = 65535 ,max_capacity=20)
+
+    schema.add_field(field_name="chunk_index_in_file", datatype=DataType.INT16)
+    schema.add_field(field_name="source", datatype=DataType.VARCHAR, max_length=65535)
+    schema.add_field(field_name="file_name", datatype=DataType.VARCHAR, max_length=65535)
+    schema.add_field(field_name="file_id", datatype=DataType.VARCHAR, max_length=65535)
+
+    # Milvus fills 'sparse' from 'text' on insert, so add_document does not need to provide it
+    schema.add_function(Function(
+        name="text_bm25",
+        function_type=FunctionType.BM25,
+        input_field_names=["text"],
+        output_field_names=[SPARSE_FIELD],
+    ))
+
+    # Prepare index parameters
+    index_params = client.prepare_index_params()
+
+    # Add indexes
+    index_params.add_index(
+        field_name="pk",
+        index_type="STL_SORT"
+    )
+    index_params.add_index(
+        field_name="file_id",
+        index_type="Trie",
+        index_name='file_id_index'
+    )
+    if settings.HNSW_ENABLED:
+        index_params.add_index(
+            field_name="vector",
+            metric_type="COSINE",
+            index_type="HNSW",
+            index_name="vector_index",
+            params={"M": 16, "efConstruction": 200}
+        )
+    else:
+        index_params.add_index(
+            field_name="vector",
+            metric_type="COSINE",
+            index_type="IVF_FLAT",
+            index_name="vector_index",
+            params={ "nlist": settings.nlist }  # Number of clusters for IVF index
+        )
+    index_params.add_index(
+        field_name=SPARSE_FIELD,
+        metric_type="BM25",
+        index_type="SPARSE_INVERTED_INDEX",
+        index_name="sparse_index",
+    )
+    return schema, index_params
 
 
 class IndexingMilvusOri:
@@ -44,49 +118,7 @@ class IndexingMilvusOri:
         """
         res = self.client_vector_store.list_collections()
         if collection_name not in res:
-            # Create schema
-            schema = self.client_vector_store.create_schema(
-                auto_id=True,
-                enable_dynamic_field=True,
-            )
-            # Add fields to schema
-            schema.add_field(field_name="pk", datatype=DataType.INT64, is_primary=True)
-            schema.add_field(field_name="vector", datatype=DataType.FLOAT_VECTOR, dim=settings.embedding_model['dim'])
-            schema.add_field(field_name="text", datatype=DataType.VARCHAR, max_length=65535)
-            schema.add_field(field_name="lst_img_of_chunks", datatype=DataType.ARRAY, element_type=DataType.VARCHAR, max_length = 65535 ,max_capacity=20)
-
-            schema.add_field(field_name="chunk_index_in_file", datatype=DataType.INT16)
-            schema.add_field(field_name="source", datatype=DataType.VARCHAR, max_length=65535)
-            schema.add_field(field_name="file_name", datatype=DataType.VARCHAR, max_length=65535)
-            schema.add_field(field_name="file_id", datatype=DataType.VARCHAR, max_length=65535)
-            # schema.add_field(field_name="collection_name", datatype=DataType.VARCHAR, max_length=65535)
-            # schema.add_field(field_name="page", datatype=DataType.INT64)
-            # schema.add_field(field_name="file_type", datatype=DataType.VARCHAR, max_length=65535)
-
-
-
-            # Prepare index parameters
-            index_params = self.client_vector_store.prepare_index_params()
-
-            # Add indexes
-            index_params.add_index(
-                field_name="pk",
-                index_type="STL_SORT"
-            )
-            # Add indexes
-            index_params.add_index(
-                field_name="file_id",
-                index_type="Trie",
-                # index_type="AUTOINDEX",
-                index_name='file_id_index'
-            )
-            index_params.add_index(
-                field_name="vector",
-                metric_type="COSINE",
-                index_type="IVF_FLAT",
-                index_name="vector_index",
-                params={ "nlist": settings.nlist }  # Number of clusters for IVF index
-            )
+            schema, index_params = build_schema_and_index(self.client_vector_store)
             # Create a collection with the index loaded simultaneously
             self.client_vector_store.create_collection(
                 collection_name=collection_name,

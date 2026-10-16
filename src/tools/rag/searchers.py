@@ -6,6 +6,10 @@ from src.loggers.logapp import logger
 from src.configs import settings
 
 
+# BM25 sparse vector field generated from 'text' (see indexing_milvus.build_schema_and_index)
+SPARSE_FIELD = "sparse"
+
+
 class VectorSearchError(RuntimeError):
     """Raised when Milvus fails during search, so callers can tell it apart from 'no relevant documents'."""
 

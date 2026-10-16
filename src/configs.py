@@ -68,6 +68,21 @@ class Settings(BaseSettings):
     RAG_MAX_IMAGES: int = int(os.getenv("RAG_MAX_IMAGES", 5)) # số ảnh tối đa trả về, ưu tiên ảnh của chunk tìm thấy trực tiếp
     RAG_REWRITE_HISTORY_TURNS: int = int(os.getenv("RAG_REWRITE_HISTORY_TURNS", 3)) # số lượt hội thoại (user + assistant) dùng để viết lại câu hỏi trước khi search, 0 = tắt
 
+    # Hybrid search (dense + BM25), trộn bằng RRF
+    RAG_HYBRID_ENABLED: bool = os.getenv("RAG_HYBRID_ENABLED", "true").lower() == "true" # false = chỉ dùng dense
+    RAG_HYBRID_CANDIDATES: int = int(os.getenv("RAG_HYBRID_CANDIDATES", 10)) # số kết quả lấy từ mỗi nhánh trước khi trộn
+    RAG_RRF_K: int = int(os.getenv("RAG_RRF_K", 60)) # hằng số k của RRF: score = sum(1 / (k + rank))
+    RAG_BM25_MIN_SCORE: float = float(os.getenv("RAG_BM25_MIN_SCORE", 0.0)) # bỏ kết quả BM25 có điểm thấp hơn ngưỡng
+    RAG_BM25_MIN_TERM_RATIO: float = float(os.getenv("RAG_BM25_MIN_TERM_RATIO", 0.5)) # tỉ lệ từ (âm tiết) của câu hỏi tối thiểu phải có trong chunk BM25; tiếng Việt trùng 1 âm tiết rất dễ nên cần lọc
+    HNSW_ENABLED: bool = os.getenv("HNSW_ENABLED", "false").lower() == "true" # true = collection mới dùng HNSW thay cho IVF_FLAT
+    VI_STOPWORDS: List[str] = [
+        "là", "của", "và", "các", "có", "được", "cho", "này", "thì", "những", "một", "với", "trong",
+        "để", "khi", "đã", "sẽ", "đang", "cũng", "như", "từ", "theo", "về", "tại", "bị", "do", "nên",
+        "nếu", "mà", "hay", "hoặc", "nào", "gì", "ở", "ra", "vào", "lên", "đó", "kia", "ấy", "rằng",
+        # từ đệm thường gặp trong câu hỏi
+        "tôi", "bạn", "mình", "hỏi", "xin", "giúp", "muốn", "biết", "thế", "vậy", "ạ", "nhé", "không",
+    ]
+
     # Chunking parameters
     CHUNK_SIZE: int = int(os.getenv("CHUNK_SIZE", 600)) # pdf, docx
     CHUNK_OVERLAP: int = int(os.getenv("CHUNK_OVERLAP", 200))

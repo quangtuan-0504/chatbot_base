@@ -9,6 +9,7 @@ from src.utils.auth_utils import get_current_active_user, get_current_user_ws
 import time
 from src.configs import settings
 from src.loggers.logapp import logger
+from src.tools.rag.searchers import VectorSearchError
 
 router = APIRouter()
 
@@ -323,6 +324,9 @@ async def stream_chat_websocket(websocket: WebSocket, token: str = None):
 
     except WebSocketDisconnect:
         logger.info("chat-stream: client disconnected")
+    except VectorSearchError as e:
+        logger.error(f"chat-stream vector search failed: {e}")
+        await send_error("Không thể tìm kiếm trong tài liệu, vui lòng thử lại sau")
     except Exception as e:
         logger.exception(f"chat-stream unexpected error: {e}")
         await send_error(f"Unexpected error: {str(e)}")

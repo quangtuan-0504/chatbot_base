@@ -65,6 +65,7 @@ class Settings(BaseSettings):
     RAG_MAX_COMPLETION_TOKENS: int = int(os.getenv("RAG_MAX_COMPLETION_TOKENS", 500)) # số token dành cho câu trả lời
     RAG_SEARCH_LIMIT: int = int(os.getenv("RAG_SEARCH_LIMIT", 3)) # số chunk lấy ra khi search Milvus
     RAG_SCORE_THRESHOLD: float = float(os.getenv("RAG_SCORE_THRESHOLD", 0.3)) # bỏ chunk có cosine similarity thấp hơn ngưỡng
+    RAG_MAX_IMAGES: int = int(os.getenv("RAG_MAX_IMAGES", 5)) # số ảnh tối đa trả về, ưu tiên ảnh của chunk tìm thấy trực tiếp
 
     # Chunking parameters
     CHUNK_SIZE: int = int(os.getenv("CHUNK_SIZE", 600)) # pdf, docx

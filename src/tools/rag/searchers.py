@@ -1,8 +1,13 @@
 from typing import Tuple, List, Dict, Optional
 from pymilvus.exceptions import MilvusException
+from pymilvus.client.types import LoadState
 from pymilvus import MilvusClient
 from src.loggers.logapp import logger
 from src.configs import settings
+
+
+class VectorSearchError(RuntimeError):
+    """Raised when Milvus fails during search, so callers can tell it apart from 'no relevant documents'."""
 
 
 def find_overlap(prev: str, current: str) -> int:
@@ -30,15 +35,22 @@ def merge_chunks(chunks: List[Tuple[int, str]]) -> str:
     return result
 
 def merge_document_texts(documents: List[Tuple[str, List[Tuple[int, str]]]]) -> str:
-    """Merge text chunks from multiple documents with document attribution."""
-    result = []
+    """Merge text chunks from multiple documents, each headed by its file name.
+    Avoid 'Nguồn:' / 'Source:' here: chat history is cut at those markers in routers/chats.py."""
+    return "\n\n".join(
+        f"### Tài liệu: {file_name}\n{merge_chunks(chunks)}"
+        for file_name, chunks in documents
+    )
 
-    for file_name, chunks in documents:
-        merged_text = merge_chunks(chunks)
-        attribution = f"\nThe above information is taken from file: {file_name}\n\n"
-        result.append(merged_text + attribution)
-
-    return "".join(result)
+def select_images(
+    hit_keys: List[Tuple[str, int]],
+    images_by_chunk: Dict[Tuple[str, int], List[str]],
+    max_images: int,
+) -> List[str]:
+    """Images of directly matched chunks first (by score), then images of vicinity chunks, deduped and capped."""
+    ordered = [img for key in hit_keys for img in images_by_chunk.get(key, [])]
+    ordered += [img for imgs in images_by_chunk.values() for img in imgs]
+    return list(dict.fromkeys(ordered))[:max_images]
 
 def vicinity_search(
     client: MilvusClient,
@@ -51,10 +63,12 @@ def vicinity_search(
     upper_bound: int = 1,
     lower_bound: int = 1,
     score_threshold: Optional[float] = settings.RAG_SCORE_THRESHOLD,
+    max_images: int = settings.RAG_MAX_IMAGES,
 ) -> Tuple[str, List[Dict[str, str]], List[str]]:
     """
     Search for documents in the vector store and retrieve surrounding text chunks.
-    Returns (merged context, relevant files, unique image paths).
+    Returns (merged context, relevant files, image paths).
+    Raises VectorSearchError if Milvus fails.
     """
     if not collection_name.startswith(settings.PREFIX_COLLECTION_NAME):
         collection_name = settings.PREFIX_COLLECTION_NAME+collection_name
@@ -67,7 +81,8 @@ def vicinity_search(
             return "", [], []
 
         # Ensure collection is loaded
-        client.load_collection(collection_name)
+        if client.get_load_state(collection_name)["state"] != LoadState.Loaded:
+            client.load_collection(collection_name)
 
         # Set up search filter if file IDs are provided
         expr = "file_id in {list_file}" if file_ids else None
@@ -87,13 +102,9 @@ def vicinity_search(
                 "offset": offset,
             }
         )
-
     except MilvusException as e:
         logger.error(f"Milvus Error when searching {collection_name}: {str(e)}")
-        return "", [], []
-    except Exception as e:
-        logger.error(f"Unknown error: {str(e)}")
-        raise e
+        raise VectorSearchError(str(e)) from e
 
     hits = [hit for hits_group in search_results for hit in hits_group]
     logger.info(f"Vector search scores: {[round(hit['distance'], 4) for hit in hits]}")
@@ -108,9 +119,11 @@ def vicinity_search(
 
     # Group vicinity indices by file, keeping files in order of their best hit
     files: Dict[str, Dict] = {}
+    hit_keys: List[Tuple[str, int]] = []
     for hit in hits:
         entity = hit["entity"]
         chunk_index = entity["chunk_index_in_file"]
+        hit_keys.append((entity["file_id"], chunk_index))
         file = files.setdefault(
             entity["file_id"],
             {"file_name": entity["file_name"], "indices": set()}
@@ -118,7 +131,7 @@ def vicinity_search(
         file["indices"].update(range(max(chunk_index - lower_bound, 0), chunk_index + upper_bound + 1))
 
     documents = []
-    lst_img = []
+    images_by_chunk: Dict[Tuple[str, int], List[str]] = {}
     for file_id, file in files.items():
         # One query per file for all vicinity chunks
         try:
@@ -129,8 +142,8 @@ def vicinity_search(
                 output_fields=["text", "chunk_index_in_file", "lst_img_of_chunks"],
             )
         except MilvusException as e:
-            logger.error(f"Milvus Error when querying vicinity of file {file_id}: {str(e)}")
-            continue
+            logger.error(f"Milvus Error when querying vicinity of file {file_id} in {collection_name}: {str(e)}")
+            raise VectorSearchError(str(e)) from e
 
         # Dedupe by chunk index and sort, since query results have no guaranteed order
         chunks_by_index = {chunk["chunk_index_in_file"]: chunk for chunk in vicinity_results}
@@ -141,7 +154,7 @@ def vicinity_search(
             [(chunk["chunk_index_in_file"], chunk["text"]) for chunk in sorted_chunks]
         ))
         for chunk in sorted_chunks:
-            lst_img.extend(chunk["lst_img_of_chunks"] or [])
+            images_by_chunk[(file_id, chunk["chunk_index_in_file"])] = chunk["lst_img_of_chunks"] or []
 
     relevant_files = [
         {"file_name": file["file_name"], "file_id": file_id}
@@ -151,4 +164,4 @@ def vicinity_search(
     # Merge text chunks
     merged_text = merge_document_texts(documents)
 
-    return merged_text, relevant_files, list(dict.fromkeys(lst_img))
+    return merged_text, relevant_files, select_images(hit_keys, images_by_chunk, max_images)

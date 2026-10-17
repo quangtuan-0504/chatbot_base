@@ -123,24 +123,29 @@ class Settings(BaseSettings):
         # }
     ]
 
+    # Embedding model served by vllm (BAAI/bge-m3)
+    EMBEDDING_MODEL_PATH: str = os.getenv("EMBEDDING_MODEL_PATH", "BAAI/bge-m3") # with vllm, this is the model name served by `vllm serve`
+    EMBEDDING_BASE_URL: str = os.getenv("EMBEDDING_BASE_URL", "http://localhost:8320/v1")
+    EMBEDDING_API_KEY: str = os.getenv("EMBEDDING_API_KEY", "EMPTY") # vllm without --api-key accepts any value, but the OpenAI client requires one
+
     # Configuration for indexing
     embedding_model: Dict[str, Any] = {
-        # "name": "BAAI/bge-m3",
-        # "provider": "vllm",
-        # "client": "openai-client",
-        # "type_model": "vlm",
-        # "path": "/LLM/EmbeddingModels/BAAI/bge-m3",
-        # "base_url": "http://10.18.27.59:8001/v1",
-        # "api_key": "",  # Optional, if using vLLM or other providers
-        # "dim": 1024,  # Dimension of the embedding vector
-        "name": "text-embedding-3-small",
-        "provider": "openai-api",
+        "name": "BAAI/bge-m3",
+        "provider": "vllm",
         "client": "openai-client",
         "type_model": "vlm",
-        "path": "",
-        "base_url": "",
-        "api_key": openai_api_key,  # Optional, if using vLLM or other providers
-        "dim": 1536,  # Dimension of the embedding vector
+        "path": EMBEDDING_MODEL_PATH,
+        "base_url": EMBEDDING_BASE_URL,
+        "api_key": EMBEDDING_API_KEY,
+        "dim": 1024,  # Dimension of the embedding vector
+        # "name": "text-embedding-3-small",
+        # "provider": "openai-api",
+        # "client": "openai-client",
+        # "type_model": "vlm",
+        # "path": "",
+        # "base_url": "",
+        # "api_key": openai_api_key,  # Optional, if using vLLM or other providers
+        # "dim": 1536,  # Dimension of the embedding vector
     }
 
     batch_size: int = 500

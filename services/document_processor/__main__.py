@@ -81,7 +81,7 @@ except Exception as e:
 # print(response.data[0].embedding)
 
 # Configuration
-MAX_PROCESSING_TIME = 300  # seconds
+MAX_PROCESSING_TIME = int(os.getenv("MAX_PROCESSING_TIME", 3600))  # seconds; a large PDF through Marker can take several minutes, resetting it earlier makes another thread index it twice
 MAX_RETRY_ATTEMPTS = 3
 POLLING_INTERVAL = 10  # seconds
 NUM_WORKER_THREADS = 3

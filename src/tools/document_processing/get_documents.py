@@ -7,6 +7,7 @@ from src.tools.document_processing import load_docx, load_pdf, load_xlsx
 from src.tools.intergrations.minio_tools import download_file_from_minio
 from src.helpers.minio import minio_client
 from src.configs import settings
+from src.loggers.logapp import logger
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 def load_document(
         file_path : str,
@@ -91,9 +92,10 @@ def load_document(
         else:
             docs = []
     except Exception as e:
-        print(f"Error loading {file_path}: {str(e)}")
-        docs = []
-    return docs 
+        # Re-raise so the worker marks the file as 'error' instead of 'completed' with 0 chunks
+        logger.error(f"Error loading {file_path}: {str(e)}")
+        raise
+    return docs
 
 if __name__ == "__main__":
     res=load_document("test_data/test.docx")

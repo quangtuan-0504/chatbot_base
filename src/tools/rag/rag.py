@@ -1,5 +1,6 @@
 import os
 import time
+from dataclasses import asdict
 
 from src.tools.rag.prompts import prompts, QUERY_REWRITE_PROMPT
 from typing import List, Dict, Optional, Tuple, Generator
@@ -13,6 +14,10 @@ from src.loggers.logapp import logger
 from src.configs import settings
 from src.helpers.minio import minio_client
 
+
+def temperature_kwargs() -> Dict:
+    """Pass temperature only when RAG_TEMPERATURE is set; some models (e.g. reasoning models) reject the parameter."""
+    return {} if settings.RAG_TEMPERATURE is None else {"temperature": settings.RAG_TEMPERATURE}
 
 
 class ChatbotRAGvLLM:
@@ -91,8 +96,9 @@ class ChatbotRAGvLLM:
                     "role": "user",
                     "content": QUERY_REWRITE_PROMPT.format(history_="\n".join(lines), query_=query),
                 }],
-                max_completion_tokens=200,
+                max_completion_tokens=settings.RAG_REWRITE_MAX_TOKENS,
                 stream=False,
+                **temperature_kwargs(),
             )
             metrics.add_rewrite_usage(getattr(response, "usage", None))
             rewritten = (response.choices[0].message.content or "").strip()
@@ -108,12 +114,13 @@ class ChatbotRAGvLLM:
         logger.info(f"rewritten query: {query!r} -> {rewritten!r}")
         metrics.rewritten = True
         return rewritten
-    def chat_stream(self, query: str,model_name: str, image_urls: List, history_chat, collection_name : str | None  = None, file_ids : List | None = None):
+    def chat_stream(self, query: str,model_name: str, image_urls: List, history_chat, collection_name : str | None  = None, file_ids : List | None = None, debug: Optional[Dict] = None):
         """
         Chat with the bot
 
         Args:
             query: User's input question/message
+            debug: optional dict filled with the search query, retrieval ranking, context and search metrics (evaluation only)
 
         Returns:
             str: Bot's response
@@ -143,7 +150,8 @@ class ChatbotRAGvLLM:
                     query_vector = query_vector,
                     file_ids = file_ids,
                     collection_name = collection_name,
-                    query_text = search_query
+                    query_text = search_query,
+                    debug = debug
                 )
                 metrics.vector_search_ms = (time.perf_counter() - step) * 1000
                 metrics.context_chars = len(context)
@@ -154,6 +162,10 @@ class ChatbotRAGvLLM:
             finally:
                 metrics.total_ms = (time.perf_counter() - start) * 1000
                 logger.info(metrics.to_log())
+                if debug is not None:
+                    debug["search_query"] = search_query
+                    debug["context"] = context
+                    debug["search_metrics"] = asdict(metrics)
 
         messages = self._prepare_messages(query,model_name, image_urls, history_chat, context)
 
@@ -162,8 +174,8 @@ class ChatbotRAGvLLM:
                 messages=messages,
                 # max_tokens=1024, # số token dành cho toàn bộ đoạn chat, nếu để quá ít, cấu trả lời có thể bị rỗng ''.
                 max_completion_tokens=settings.RAG_MAX_COMPLETION_TOKENS, # số token dành cho câu trả lời
-                # temperature=0.1,
-                stream = True
+                stream = True,
+                **temperature_kwargs()
         )
 
         for chunk in response:

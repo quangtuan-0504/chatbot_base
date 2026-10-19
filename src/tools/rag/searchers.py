@@ -17,8 +17,9 @@ class VectorSearchError(RuntimeError):
     """Raised when Milvus fails during search, so callers can tell it apart from 'no relevant documents'."""
 
 
-def rrf_fuse(ranked_lists: List[List[Dict]], k: int, limit: int) -> List[Dict]:
-    """Reciprocal Rank Fusion: score = sum(1 / (k + rank)) over lists, keyed by (file_id, chunk_index_in_file)."""
+def rrf_fuse(ranked_lists: List[List[Dict]], k: int, limit: Optional[int] = None) -> List[Dict]:
+    """Reciprocal Rank Fusion: score = sum(1 / (k + rank)) over lists, keyed by (file_id, chunk_index_in_file).
+    Each returned hit carries its fused score as 'rrf_score'; limit=None keeps the whole ranking."""
     scores: Dict[Tuple[str, int], float] = {}
     hits_by_key: Dict[Tuple[str, int], Dict] = {}
     for hits in ranked_lists:
@@ -28,7 +29,7 @@ def rrf_fuse(ranked_lists: List[List[Dict]], k: int, limit: int) -> List[Dict]:
             hits_by_key.setdefault(key, hit)
     ranked = sorted(scores, key=scores.get, reverse=True)[:limit]
     logger.info(f"RRF fused: {[(key, round(scores[key], 4)) for key in ranked]}")
-    return [hits_by_key[key] for key in ranked]
+    return [{**hits_by_key[key], "rrf_score": scores[key]} for key in ranked]
 
 def analyze_terms(text: str) -> Set[str]:
     """Python approximation of the BM25 analyzer (standard tokenizer, lowercase, stopwords)."""
@@ -101,12 +102,14 @@ def vicinity_search(
     score_threshold: Optional[float] = settings.RAG_SCORE_THRESHOLD,
     max_images: int = settings.RAG_MAX_IMAGES,
     query_text: Optional[str] = None,
+    debug: Optional[Dict] = None,
 ) -> Tuple[str, List[Dict[str, str]], List[str]]:
     """
     Search for documents in the vector store and retrieve surrounding text chunks.
     With query_text and a collection that has the BM25 field, dense and BM25 results are fused with RRF;
     otherwise the search is dense-only.
     Returns (merged context, relevant files, image paths).
+    If debug is a dict, it is filled with the ranking before the cut to `limit` (used for Hit@k / MRR evaluation).
     Raises VectorSearchError if Milvus fails.
     """
     if not collection_name.startswith(settings.PREFIX_COLLECTION_NAME):
@@ -125,7 +128,8 @@ def vicinity_search(
 
         hybrid = bool(settings.RAG_HYBRID_ENABLED and query_text and query_text.strip()
                       and has_sparse_field(client, collection_name))
-        candidates = max(limit, settings.RAG_HYBRID_CANDIDATES) if hybrid else limit
+        # Fetch the same number of candidates in both modes; only the top `limit` reach the LLM
+        candidates = max(limit, settings.RAG_HYBRID_CANDIDATES)
 
         # Set up search filter if file IDs are provided
         expr = "file_id in {list_file}" if file_ids else None
@@ -182,9 +186,22 @@ def vicinity_search(
             hit for hit, ratio in zip(sparse_hits, ratios)
             if hit["distance"] >= settings.RAG_BM25_MIN_SCORE and ratio >= settings.RAG_BM25_MIN_TERM_RATIO
         ]
-        hits = rrf_fuse([dense_hits, sparse_hits], k=settings.RAG_RRF_K, limit=limit)
+        ranked = rrf_fuse([dense_hits, sparse_hits], k=settings.RAG_RRF_K)
     else:
-        hits = dense_hits[:limit]
+        ranked = dense_hits
+    hits = ranked[:limit]
+
+    if debug is not None:
+        debug["hybrid"] = hybrid
+        debug["ranking"] = [
+            {
+                "file_id": hit["entity"]["file_id"],
+                "chunk_index_in_file": hit["entity"]["chunk_index_in_file"],
+                "rank": rank,
+                "score": hit.get("rrf_score", hit["distance"]),
+            }
+            for rank, hit in enumerate(ranked, start=1)
+        ]
 
     if not hits:
         return "", [], []

@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from dotenv import load_dotenv
 from dotenv import find_dotenv
 import os
@@ -62,10 +62,12 @@ class Settings(BaseSettings):
     MARKER_PDF_URL: str = os.getenv("MARKER_PDF_URL", "10.18.27.59:8060")
 
     # RAG parameters
-    RAG_MAX_COMPLETION_TOKENS: int = int(os.getenv("RAG_MAX_COMPLETION_TOKENS", 500)) # số token dành cho câu trả lời
+    RAG_MAX_COMPLETION_TOKENS: int = int(os.getenv("RAG_MAX_COMPLETION_TOKENS", 4000)) # số token dành cho câu trả lời; với reasoning model gồm cả token suy luận, 500 làm câu trả lời rỗng
+    RAG_REWRITE_MAX_TOKENS: int = int(os.getenv("RAG_REWRITE_MAX_TOKENS", 2000)) # số token cho bước viết lại câu hỏi (gồm cả token suy luận)
     RAG_SEARCH_LIMIT: int = int(os.getenv("RAG_SEARCH_LIMIT", 3)) # số chunk lấy ra khi search Milvus
     RAG_SCORE_THRESHOLD: float = float(os.getenv("RAG_SCORE_THRESHOLD", 0.3)) # bỏ chunk có cosine similarity thấp hơn ngưỡng
     RAG_MAX_IMAGES: int = int(os.getenv("RAG_MAX_IMAGES", 5)) # số ảnh tối đa trả về, ưu tiên ảnh của chunk tìm thấy trực tiếp
+    RAG_TEMPERATURE: Optional[float] = float(os.environ["RAG_TEMPERATURE"]) if os.getenv("RAG_TEMPERATURE") else None # None = không gửi temperature, dùng mặc định của model
     RAG_REWRITE_HISTORY_TURNS: int = int(os.getenv("RAG_REWRITE_HISTORY_TURNS", 3)) # ABLATION số lượt hội thoại (user + assistant) dùng để viết lại câu hỏi trước khi search, 0 = tắt
 
     # Hybrid search (dense + BM25), trộn bằng RRF

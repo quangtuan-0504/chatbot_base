@@ -1,8 +1,6 @@
-version: '3.5'
 
 services:
   etcd:
-    restart: always
     container_name: milvus-etcd
     image: quay.io/coreos/etcd:v3.5.25
     environment:
@@ -12,7 +10,7 @@ services:
       - ETCD_SNAPSHOT_COUNT=50000
     volumes:
       - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/etcd:/etcd
-    command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+    command: etcd -advertise-client-urls=http://etcd:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
     healthcheck:
       test: ["CMD", "etcdctl", "endpoint", "health"]
       interval: 30s
@@ -21,32 +19,43 @@ services:
 
   minio:
     container_name: milvus-minio
-    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
-    restart: always
+    image: tobi312/minio:RELEASE.2024-12-18T13-15-44Z
+
     environment:
-      MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: minioadmin
-    ports:
-      - "9001:9001"
-      - "9000:9000"
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+
     volumes:
-      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/minio:/minio_data
-    command: minio server /minio_data --console-address ":9001"
+      - ./volumes/minio:/data
+
+    command:
+      - server
+      - /data
+      - --console-address
+      - ":9001"
+
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test:
+        - CMD
+        - curl
+        - -f
+        - http://localhost:9000/minio/health/live
       interval: 30s
       timeout: 20s
       retries: 3
 
   standalone:
     container_name: milvus-standalone
-    # >= 2.5 stable is required for BM25 full-text / hybrid search
     image: milvusdb/milvus:v3.0.1
     command: ["milvus", "run", "standalone"]
-    restart: always
     security_opt:
     - seccomp:unconfined
     environment:
+      MINIO_REGION: us-east-1
       ETCD_ENDPOINTS: etcd:2379
       MINIO_ADDRESS: minio:9000
     volumes:
